@@ -1,0 +1,43 @@
+name: Create release
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - closed
+permissions:
+  contents: write
+  actions: write
+jobs:
+  release:
+    if: github.event.pull_request.merged == true && !contains(github.event.pull_request.title, '[skip-release]')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: 'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10' # v6
+        with:
+          fetch-depth: 0
+
+      - name: install autotag binary
+        run: |
+          gh release download "$TAG" --repo "$REPO" --pattern "$BINARY"
+          echo "$SHA256  $BINARY" | shasum -a 256 -c
+
+          chmod +x "$BINARY"
+          sudo mv "$BINARY" /usr/bin/autotag
+        env:
+          REPO: autotag-dev/autotag
+          BINARY: autotag_linux_amd64
+          TAG: v1.4.1
+          SHA256: 7b34c34316b8dd57b43ca0b08454ba57baf6472bef4e5ea46215b6ef5cd96146
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: create release
+        run: |-
+          TAG=$(autotag)
+          git tag $TAG
+          git push origin $TAG
+          gh release create $TAG --title "$TAG" --generate-notes
+          gh workflow run push.yml -f tag=$TAG --ref $TAG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

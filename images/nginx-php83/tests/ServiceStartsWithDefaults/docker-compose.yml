@@ -1,0 +1,14 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: nginx-php83-servicestartswithdefaults
+services:
+  nginx:
+    <<: *common
+    image: ${NGINX_PHP83:-libops/nginx:local-php8.3}
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
