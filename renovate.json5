@@ -1,0 +1,208 @@
+{
+  branchPrefix: "renovate.",
+  extends: [
+    "config:best-practices",
+    ":rebaseStalePrs",
+  ],
+  enabledManagers: [
+    "custom.regex",
+    "github-actions"
+  ],
+  ignorePaths: [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
+  packageRules: [
+    {
+      matchManagers: [
+        "custom.regex",
+      ],
+      matchDatasources: [
+        "*",
+      ],
+      allowedVersions: "/^v?\\d+\\.\\d+\\.\\d+$/",
+    },
+    {
+      matchDepNames: [
+        "apache-solr9",
+      ],
+      allowedVersions: "/^9\\./",
+    },
+    {
+      matchDepNames: [
+        "apache-solr10",
+      ],
+      allowedVersions: "/^10\\./",
+    },
+    {
+      matchDepNames: [
+        "activemq5",
+      ],
+      allowedVersions: "/^5\\./",
+    },
+    {
+      matchDepNames: [
+        "activemq6",
+      ],
+      allowedVersions: "/^6\\./",
+    },
+    {
+      matchDepNames: [
+        "fcrepo6",
+      ],
+      allowedVersions: "/^6\\./",
+    },
+    {
+      matchDepNames: [
+        "fcrepo7",
+      ],
+      allowedVersions: "/^7\\./",
+    },
+    {
+      matchDepNames: [
+        "tomcat9",
+      ],
+      allowedVersions: "/^9\\./",
+    },
+    {
+      matchDepNames: [
+        "tomcat11",
+      ],
+      allowedVersions: "/^11\\./",
+    },
+    {
+      matchDatasources: [
+        "repology"
+      ],
+      versioning: "loose",
+    },
+    {
+      groupName: "apk-packages",
+      matchDatasources: [
+        "repology"
+      ],
+      matchUpdateTypes: [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      automerge: true,
+      automergeType: "pr",
+      minimumReleaseAge: null,
+      schedule: [],
+    },
+    {
+      matchPackageNames: [
+        "fcrepo/fcrepo",
+        "fcrepo-exts/fcrepo-import-export",
+        "fcrepo-exts/fcrepo-upgrade-utils",
+        "pgjdbc/pgjdbc",
+      ],
+      extractVersion: "^(REL|fcrepo|rel|fcrepo-import-export|fcrepo-upgrade-utils)(/|-)?(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      extractVersion: "^v(?<version>\\d+\\.\\d+\\.\\d+\\.\\d+)$",
+      versioning: "regex:^(?:v)?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)?$",
+      matchPackageNames: [
+        "/^just-containers/s6-overlay$/",
+      ],
+    },
+    {
+      matchUpdateTypes: [
+        "major",
+      ],
+      groupName: null,
+      prConcurrentLimit: 1,
+    },
+    {
+      groupName: "all non-major dependencies",
+      matchDatasources: [
+        "!repology",
+      ],
+      matchUpdateTypes: [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      schedule: [
+        "* * * * 3",
+      ],
+    },
+    {
+      matchDepTypes: [
+        "action",
+      ],
+      groupName: "github-actions",
+      commitMessagePrefix: "[skip-release] ",
+    },
+    {
+      matchDepNames: [
+        "alpine-pkg-glibc",
+        "alpaca",
+        "apache-activemq5",
+        "apache-activemq6",
+        "apache-log4j",
+        "apache-solr9",
+        "apache-solr10",
+        "apache-tomcat9",
+        "apache-tomcat11",
+        "cli11",
+        "custom-composer",
+        "fcrepo6",
+        "fcrepo7",
+        "fcrepo-import-export",
+        "fcrepo-upgrade-utils",
+        "fits",
+        "fits-servlet",
+        "golang",
+        "islandora-starter-site",
+        "s6-overlay",
+        "solr-ocrhighlighting",
+        "scyllaridae",
+      ],
+      postUpgradeTasks: {
+        commands: [
+          "bash ci/update-sha.sh \"{{{depName}}}\" \"{{{currentVersion}}}\" \"{{{newVersion}}}\" \"{{{newDigest}}}\""
+        ],
+      },
+    },
+  ],
+  customManagers: [
+    {
+      customType: "regex",
+      description: "Update (COMMIT|_VERSION) variables in Dockerfiles",
+      managerFilePatterns: [
+        "/(^|/|\\.)Dockerfile$/",
+        "/(^|/)Dockerfile\\.[^/]*$/",
+        "/(^|/|\\.)utilities\\.sh$/",
+      ],
+      matchStrings: [
+        "([ ]+)?# renovate: datasource=(?<datasource>[a-z-\\.]+?) depName=(?<depName>.+?)(?: packageName=(?<packageName>.+?))?(?: versioning=(?<versioning>[a-z-]+?))?\\s(?:ENV|ARG)? .+?_VERSION=(?<currentValue>.+?)(\\s|$)",
+        "# renovate: datasource=(?<datasource>[a-z-\\.]+?) depName=(?<depName>.+?) packageName=(?<packageName>.+?) branch=(?<currentValue>.+?)\\s(?:ENV|ARG) COMMIT=(?<currentDigest>.+?)(\\s|$)",
+      ],
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}loose{{/if}}",
+    },
+  ],
+  customDatasources: {
+    "apache-downloads": {
+      defaultRegistryUrlTemplate: "https://downloads.apache.org/{{ packageName }}/",
+      format: "html",
+      transformTemplates: [
+        "{ \"releases\": [ $map($filter(releases.version, function($v, $i, $a) { $match($v, /^v?\\d+\\.\\d+\\.\\d+\\/?$/) }), function($v, $i, $a) { { \"version\": $match($v, /\\d+\\.\\d+\\.\\d+/).match } }) ] }",
+      ],
+    },
+  },
+  labels: [
+    "dependencies",
+  ],
+  osvVulnerabilityAlerts: true,
+  dependencyDashboardOSVVulnerabilitySummary: "unresolved",
+  vulnerabilityAlerts: {
+    enabled: true,
+  },
+}

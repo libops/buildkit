@@ -1,0 +1,28 @@
+# file: docker-compose.yml
+#
+# Tests that the base values for database environment variables can be
+# overridden by prefixing them.
+#
+# `base/rootfs/etc/cont-init.d/00-container-environment-00-init.sh`
+
+x-common: &common
+  restart: "no"
+
+name: fcrepo7-servicestartswithbackendmysql
+services:
+  activemq:
+    <<: *common
+    image: ${ACTIVEMQ:-libops/activemq:local}
+  mariadb:
+    image: ${MARIADB11:-libops/mariadb:local-11}
+  fcrepo:
+    environment:
+      FCREPO_PERSISTENCE_TYPE: mysql
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
+    image: ${FCREPO7:-libops/fcrepo:local-7}
+    depends_on:
+      - activemq
+      - mariadb

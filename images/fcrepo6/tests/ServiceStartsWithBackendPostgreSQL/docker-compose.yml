@@ -1,0 +1,31 @@
+# file: docker-compose.yml
+#
+# Tests that the base values for database environment variables can be
+# overridden by prefixing them.
+#
+# `base/rootfs/etc/cont-init.d/00-container-environment-00-init.sh`
+x-common: &common
+  restart: "no"
+
+name: fcrepo6-servicestartswithbackendpostgresql
+services:
+  activemq:
+    <<: *common
+    image: ${ACTIVEMQ:-libops/activemq:local}
+  postgresql:
+    image: ${POSTGRESQL:-postgres:16-alpine}
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+  fcrepo:
+    # Allow downstream container to override `DB` environment variables.
+    environment:
+      FCREPO_PERSISTENCE_TYPE: postgresql
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
+    image: ${FCREPO6:-libops/fcrepo:local-6}
+    depends_on:
+      - activemq
+      - postgresql

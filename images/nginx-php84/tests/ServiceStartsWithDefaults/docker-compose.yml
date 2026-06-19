@@ -1,0 +1,14 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: nginx-php84-servicestartswithdefaults
+services:
+  nginx:
+    <<: *common
+    image: ${NGINX_PHP84:-libops/nginx:local-php8.4}
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.

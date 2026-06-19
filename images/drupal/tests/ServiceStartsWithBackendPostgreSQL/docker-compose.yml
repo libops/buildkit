@@ -1,0 +1,21 @@
+# file: docker-compose.yml
+#
+# Tests that we can bring up the demo site.
+#
+# `base/rootfs/etc/cont-init.d/00-container-environment-00-init.sh`
+
+name: drupal-servicestartswithbackendpostgresql
+services:
+  drupal:
+    image: ${DRUPAL:-libops/drupal:local}
+    environment:
+      DRUPAL_DEFAULT_DB_DRIVER: postgresql
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - bash # /test.sh # Run test and exit.
+  postgresql:
+    image: ${POSTGRESQL:-postgres:16-alpine}
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
