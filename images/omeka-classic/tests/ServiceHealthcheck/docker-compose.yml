@@ -1,0 +1,5 @@
+---
+name: omeka-classic-servicehealthcheck
+services:
+  omeka-classic:
+    image: ${OMEKA_CLASSIC:-libops/omeka-classic:local-php83}
