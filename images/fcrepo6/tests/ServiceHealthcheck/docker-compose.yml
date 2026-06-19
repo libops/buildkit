@@ -1,0 +1,23 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: fcrepo6-servicehealthcheck
+services:
+  activemq:
+    <<: *common
+    image: ${ACTIVEMQ:-libops/activemq:local}
+  mariadb:
+    image: ${MARIADB11:-libops/mariadb:local-11}
+  fcrepo:
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
+    image: ${FCREPO6:-libops/fcrepo:local-6}
+    depends_on:
+      activemq:
+        condition: service_started
+      mariadb:
+        condition: service_healthy
