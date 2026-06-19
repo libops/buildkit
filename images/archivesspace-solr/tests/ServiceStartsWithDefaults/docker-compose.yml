@@ -1,0 +1,15 @@
+---
+name: archivesspace-solr-servicestartswithdefaults
+services:
+  solr:
+    image: ${ARCHIVESSPACE_SOLR:-libops/archivesspace-solr:local}
+    command:
+      - solr-precreate
+      - archivesspace
+      - /opt/solr/server/solr/configsets/archivesspace
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:8983/solr/archivesspace/admin/ping?wt=json' | jq -e '.status == \"OK\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 2m

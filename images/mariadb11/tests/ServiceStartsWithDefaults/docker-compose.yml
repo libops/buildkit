@@ -1,0 +1,14 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: mariadb11-servicestartswithdefaults
+services:
+  mariadb:
+    <<: *common
+    image: ${MARIADB11:-libops/mariadb:local-11}
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.

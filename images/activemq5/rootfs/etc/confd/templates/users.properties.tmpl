@@ -1,0 +1,2 @@
+{{ range $dir := lsdir "/activemq/user" }}{{ getv (printf "/activemq/user/%s/name" $dir) }}={{ getv (printf "/activemq/user/%s/password" $dir) }}
+{{ end }}

@@ -1,0 +1,11 @@
+---
+name: omeka-classic-servicehealthcheck
+services:
+  omeka-classic:
+    image: ${OMEKA_CLASSIC:-libops/omeka-classic:local-php83}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 10m

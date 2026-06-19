@@ -1,0 +1,14 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: php83-servicestartswithdefaults
+services:
+  php83:
+    <<: *common
+    image: ${PHP83:-libops/php:local-8.3}
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
