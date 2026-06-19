@@ -1,0 +1,30 @@
+---
+name: archivesspace-servicehealthcheck
+services:
+  archivesspace:
+    image: ${ARCHIVESSPACE:-libops/archivesspace:local}
+    environment:
+      ASPACE_DB_MIGRATE: "true"
+      DB_ROOT_PASSWORD: root
+      DB_PASSWORD: password
+      APPCONFIG_DB_URL: jdbc:mysql://mariadb:3306/archivesspace?useUnicode=true&characterEncoding=UTF-8&user=archivesspace&password=password&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      APPCONFIG_SOLR_URL: http://solr:8983/solr/archivesspace
+    depends_on:
+      mariadb:
+        condition: service_started
+      solr:
+        condition: service_started
+  mariadb:
+    image: ${MARIADB11:-libops/mariadb:local-11}
+    environment:
+      DB_ROOT_PASSWORD: root
+      DB_NAME: archivesspace
+      DB_USER: archivesspace
+      DB_PASSWORD: password
+  solr:
+    image: ${ARCHIVESSPACE_SOLR:-libops/archivesspace-solr:local}
+    pull_policy: build
+    build:
+      context: ../../../archivesspace-solr
+      additional_contexts:
+        solr9: docker-image://${SOLR9:-libops/solr:9}
