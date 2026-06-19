@@ -1,0 +1,57 @@
+FROM java17
+
+ARG TARGETARCH
+# renovate: datasource=custom.apache-downloads depName=apache-solr9 packageName=solr/solr
+ARG SOFTWARE_VERSION=9.10.1
+ARG SOLR_FILE=solr-${SOFTWARE_VERSION}.tgz
+ARG SOLR_URL=https://archive.apache.org/dist/solr/solr/${SOFTWARE_VERSION}/solr-${SOFTWARE_VERSION}.tgz
+ARG SOLR_FILE_SHA256="31dd91aeade540f4d7005cc1a1f7cc583ad77a78d800c9065cac06af1b097454"
+# renovate: datasource=github-releases depName=solr-ocrhighlighting packageName=dbmdz/solr-ocrhighlighting
+ARG OCRHIGHLIGHT_VERSION=0.9.5
+ARG OCRHIGHLIGHT_FILE=solr-ocrhighlighting-${OCRHIGHLIGHT_VERSION}.jar
+ARG OCRHIGHLIGHT_URL=https://github.com/dbmdz/solr-ocrhighlighting/releases/download/${OCRHIGHLIGHT_VERSION}/solr-ocrhighlighting-${OCRHIGHLIGHT_VERSION}.jar
+ARG OCRHIGHLIGHT_FILE_SHA256="0fb598699ed17e9e70cbd2923ee1907595b85068402a39fdd64e06e8b23bd419"
+ARG OCRHIGHLIGHT_DEST=/opt/solr/lib
+
+EXPOSE 8983
+
+WORKDIR /opt/solr
+
+# Platform agnostic does not require arch specific identifier.
+RUN --mount=type=cache,id=solr9-downloads-${TARGETARCH},sharing=locked,target=/opt/downloads \
+    download.sh \
+        --url "${SOLR_URL}" \
+        --sha256 "${SOLR_FILE_SHA256}" \
+        --strip \
+        --dest "/opt/solr" \
+        docs \
+        example \
+        server/solr/configsets \
+    && \
+    cleanup.sh
+
+RUN --mount=type=cache,id=solr9-ocrhighlight-downloads,sharing=locked,target=/opt/downloads \
+    download.sh \
+        --url "${OCRHIGHLIGHT_URL}" \
+        --sha256 "${OCRHIGHLIGHT_FILE_SHA256}" \
+        --dest ${OCRHIGHLIGHT_DEST} \
+    && \
+    mkdir -p /opt/solr/server/solr/contrib/ocrhighlighting/lib && \
+    # v9 support to avoid breaking <lib> directives in solr XML
+    ln -s "${OCRHIGHLIGHT_DEST}/solr-ocrhighlighting-${OCRHIGHLIGHT_VERSION}.jar" /opt/solr/server/solr/contrib/ocrhighlighting/lib/ocrhighlighting.jar && \
+    cleanup.sh
+
+RUN create-service-user.sh --name solr /data && \
+    cleanup.sh
+
+# Defaults environment variables to be overloaded.
+ENV \
+    SOLR_JAVA_OPTS= \
+    SOLR_JETTY_OPTS="-Dsolr.jetty.host=0.0.0.0" \
+    SOLR_LOG_LEVEL=INFO \
+    SOLR_MEMORY=512m \
+    SOLR_MODULES=analysis-extras,extraction,langid,ltr
+
+COPY --link rootfs /
+
+HEALTHCHECK CMD curl -s http://localhost:8983/solr/admin/info/system?wt=json | jq -r .responseHeader.status | grep -q 0

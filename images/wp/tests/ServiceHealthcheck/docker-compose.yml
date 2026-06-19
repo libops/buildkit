@@ -1,0 +1,5 @@
+---
+name: wp-servicehealthcheck
+services:
+  wp:
+    image: ${WP:-libops/wp:local-php83}

@@ -1,0 +1,15 @@
+---
+# Common to all services
+x-common: &common
+  restart: "no"
+
+name: alpaca-servicestartswithdefaults
+services:
+  alpaca:
+    <<: *common
+    image: ${ALPACA:-libops/alpaca:local}
+    depends_on:
+      - activemq
+  activemq:
+    <<: *common
+    image: ${ACTIVEMQ:-libops/activemq:local}

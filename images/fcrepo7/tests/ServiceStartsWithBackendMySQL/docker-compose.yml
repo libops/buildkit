@@ -1,0 +1,25 @@
+# file: docker-compose.yml
+#
+# Tests that fcrepo starts with MariaDB storage.
+
+x-common: &common
+  restart: "no"
+
+name: fcrepo7-servicestartswithbackendmysql
+services:
+  activemq:
+    <<: *common
+    image: ${ACTIVEMQ:-libops/activemq:local}
+  mariadb:
+    image: ${MARIADB11:-libops/mariadb:local-11}
+  fcrepo:
+    volumes:
+      - ./test.sh:/test.sh # Test to run.
+    command:
+      - /test.sh # Run test and exit.
+    image: ${FCREPO7:-libops/fcrepo:local-7}
+    depends_on:
+      activemq:
+        condition: service_started
+      mariadb:
+        condition: service_healthy

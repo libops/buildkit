@@ -1,0 +1,5 @@
+---
+name: ojs-servicehealthcheck
+services:
+  ojs:
+    image: ${OJS:-libops/ojs:local-php83}
