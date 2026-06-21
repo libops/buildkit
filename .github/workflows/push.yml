@@ -319,7 +319,7 @@ jobs:
             packages: sitectl sitectl-drupal
           - plugin: isle
             packages: sitectl sitectl-isle sitectl-drupal
-    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@main
+    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@b83595e3368df033bdcca3651df0c4cf052dd112 # main
     with:
       plugin: ${{ matrix.plugin }}
       create-definition: default
