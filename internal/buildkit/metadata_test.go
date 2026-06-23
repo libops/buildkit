@@ -86,8 +86,8 @@ func TestComposeEnvUsesCurrentVersionedImageForGenericAlias(t *testing.T) {
 	}
 }
 
-func TestComposeEnvReplacesEmptyAmbientImageAlias(t *testing.T) {
-	t.Setenv("ISLANDORA", "")
+func TestComposeEnvReplacesAmbientImageAlias(t *testing.T) {
+	t.Setenv("ISLANDORA", "libops/islandora")
 
 	root := repoRoot(t)
 	metadata, err := LoadMetadata(root)

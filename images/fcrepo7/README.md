@@ -46,7 +46,7 @@ additional settings, volumes, ports, etc.
 | FCREPO_S3_PASSWORD           |                      | AWS Secret Token for S3 Storage                                                                             |
 | FCREPO_S3_PREFIX             |                      | AWS Prefix for S3 Storage                                                                                   |
 | FCREPO_PERSISTENCE_TYPE      | file                 | The object store type. Only `file` and `mysql` are supported at this time                                   |
-| FCREPO_DISABLE_SYN           | false                | Enable or disable authentication via [Syn](https://github.com/Islandora/Syn)                                |
+| FCREPO_DISABLE_SYN           | true                 | Enable or disable authentication via [Syn](https://github.com/Islandora/Syn)                                |
 | FCREPO_SESSION_TIMEOUT       | 180000               | This sets the duration (in milliseconds) for which a transaction will stay active before auto-rolling back  |
 
 To allow [external content] provide sites as key pairs. Wherein multiple values

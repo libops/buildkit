@@ -1,4 +1,4 @@
-FROM tomcat9
+FROM tomcat11
 
 ARG TARGETARCH
 
@@ -57,7 +57,7 @@ ENV \
     FCREPO_DB_NAME=fcrepo \
     FCREPO_DB_PASSWORD=password \
     FCREPO_DB_USER=fcrepo \
-    FCREPO_DISABLE_SYN=false \
+    FCREPO_DISABLE_SYN=true \
     FCREPO_PERSISTENCE_TYPE=file \
     FCREPO_TOMCAT_ADMIN_ROLES=manager-gui,fedoraAdmin \
     FCREPO_S3_BUCKET= \
