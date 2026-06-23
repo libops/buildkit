@@ -66,7 +66,12 @@ elif [ "$DESTINATION_EXT" = "mp4" ]; then
   )
   echo "${cmd[@]}" >&2
   "${cmd[@]}" > /dev/null
-elif [ "$DESTINATION_EXT" = "jpg" ] || [ "$DESTINATION_EXT" = "png" ] ; then
+elif [[ "$DESTINATION_EXT" =~ ^(jpg|jpeg|jpe|pjpeg|png)$ ]] ; then
+  DESTINATION_CODEC="$DESTINATION_EXT"
+  if [[ "$DESTINATION_EXT" =~ ^(jpg|jpeg|jpe|pjpeg)$ ]]; then
+    DESTINATION_CODEC="mjpeg"
+  fi
+
   cmd=(
     ffmpeg -loglevel error
     -f "$SOURCE_EXT"
@@ -81,7 +86,7 @@ elif [ "$DESTINATION_EXT" = "jpg" ] || [ "$DESTINATION_EXT" = "png" ] ; then
   cmd+=(
     "${ARGS[@]}"
     -f image2pipe
-    -vcodec "${DESTINATION_EXT/#jpg/mjpeg}"
+    -vcodec "$DESTINATION_CODEC"
     "$OUTPUT_FILE"
   )
   echo "${cmd[@]}" >&2
