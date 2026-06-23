@@ -80,6 +80,66 @@ jobs:
           echo "contexts=${CONTEXTS}" >> "$GITHUB_OUTPUT"
           echo "published-image=${PUBLISHED_IMAGE}" >> "$GITHUB_OUTPUT"
 
+      - name: Login to Docker Hub
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          retry_with_backoff() {
+            local max_attempts=5
+            local attempt=1
+            local delay=15
+            while true; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Command failed after $max_attempts attempts"
+                return 1
+              fi
+              echo "Attempt $attempt failed, retrying in ${delay}s..."
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          dockerhub_login() {
+            printf '%s' "$DOCKERHUB_PASSWORD" | docker login \
+              --username "$DOCKERHUB_USER" \
+              --password-stdin \
+              docker.io
+          }
+
+          retry_with_backoff dockerhub_login
+
+      - name: Pull BuildKit image
+        run: |
+          set -euo pipefail
+
+          retry_with_backoff() {
+            local max_attempts=5
+            local attempt=1
+            local delay=15
+            while true; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Command failed after $max_attempts attempts"
+                return 1
+              fi
+              echo "Attempt $attempt failed, retrying in ${delay}s..."
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          retry_with_backoff docker pull moby/buildkit:v0.31.0
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
@@ -87,12 +147,6 @@ jobs:
           driver-opts: |
             image=moby/buildkit:v0.31.0
             network=host
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - id: build
         name: Build and push
@@ -136,10 +190,39 @@ jobs:
           esac
 
       - name: Login to Docker Hub
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          retry_with_backoff() {
+            local max_attempts=5
+            local attempt=1
+            local delay=15
+            while true; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Command failed after $max_attempts attempts"
+                return 1
+              fi
+              echo "Attempt $attempt failed, retrying in ${delay}s..."
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          dockerhub_login() {
+            printf '%s' "$DOCKERHUB_PASSWORD" | docker login \
+              --username "$DOCKERHUB_USER" \
+              --password-stdin \
+              docker.io
+          }
+
+          retry_with_backoff dockerhub_login
 
       - name: ghcr Login
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
@@ -147,10 +230,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       - name: Create and push manifest list
         id: build-push-manifest
@@ -212,6 +291,6 @@ jobs:
             "${BASE_IMAGE_REF}-amd64" \
             "${BASE_IMAGE_REF}-arm64"
 
-          DIGEST=$(docker buildx imagetools inspect "$IMAGE" | grep Digest | awk '{print $2}')
+          DIGEST=$(retry_with_backoff docker buildx imagetools inspect "$IMAGE" | grep Digest | awk '{print $2}')
           echo "digest=-Pisle.${{ inputs.image }}.digest=${{ inputs.repository }}/${PUBLISHED_IMAGE}@$DIGEST" >> $GITHUB_OUTPUT
           echo "context=docker-image://${{ inputs.repository }}/${PUBLISHED_IMAGE}@$DIGEST" >> $GITHUB_OUTPUT
