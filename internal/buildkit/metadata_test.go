@@ -86,6 +86,43 @@ func TestComposeEnvUsesCurrentVersionedImageForGenericAlias(t *testing.T) {
 	}
 }
 
+func TestComposeEnvReplacesEmptyAmbientImageAlias(t *testing.T) {
+	t.Setenv("ISLANDORA", "")
+
+	root := repoRoot(t)
+	metadata, err := LoadMetadata(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	runner := Runner{
+		metadata: metadata,
+		options: TestOptions{
+			Repository:  "libops",
+			Mode:        "fallback",
+			FallbackTag: "local",
+		},
+		resolver: &imageResolver{
+			metadata:    metadata,
+			repository:  "libops",
+			mode:        "fallback",
+			fallbackTag: "local",
+		},
+	}
+
+	env := map[string]string{}
+	for _, value := range runner.composeEnv(TestCase{Image: "islandora-php83"}) {
+		key, item, ok := strings.Cut(value, "=")
+		if ok {
+			env[key] = item
+		}
+	}
+
+	if env["ISLANDORA"] != "libops/islandora:local-php83" {
+		t.Fatalf("ISLANDORA = %q", env["ISLANDORA"])
+	}
+}
+
 func TestPlanSupportsLevelFourImages(t *testing.T) {
 	root := repoRoot(t)
 	metadata, err := LoadMetadata(root)

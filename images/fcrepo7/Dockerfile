@@ -1,4 +1,4 @@
-FROM tomcat11
+FROM tomcat9
 
 ARG TARGETARCH
 

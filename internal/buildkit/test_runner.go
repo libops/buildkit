@@ -784,7 +784,7 @@ func (r *Runner) composeEnv(test TestCase) []string {
 
 	computed := r.resolver.envFor(test.Image)
 	for key, value := range computed {
-		if _, exists := env[key]; !exists {
+		if existing, exists := env[key]; !exists || existing == "" {
 			env[key] = value
 		}
 	}
