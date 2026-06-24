@@ -60,6 +60,7 @@ ENV \
     FCREPO_DISABLE_SYN=true \
     FCREPO_PERSISTENCE_TYPE=file \
     FCREPO_TOMCAT_ADMIN_ROLES=manager-gui,fedoraAdmin \
+    TOMCAT_ADMIN_ROLES=manager-gui,fedoraAdmin \
     FCREPO_S3_BUCKET= \
     FCREPO_S3_PASSWORD= \
     FCREPO_S3_USER= \
