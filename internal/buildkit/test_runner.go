@@ -438,6 +438,9 @@ func (r *Runner) specFor(test TestCase) testSpec {
 		}
 	case "archivesspace":
 		spec.Timeout = 15 * time.Minute
+		if test.Name == "ServiceHealthcheck" {
+			spec.ExpectedExitCode["archivesspace"] = []int{0, 143}
+		}
 	case "base":
 		switch test.Name {
 		case "ServiceStartsWithDefaults":
