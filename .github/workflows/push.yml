@@ -62,7 +62,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
 
@@ -317,7 +317,7 @@ jobs:
             packages: sitectl sitectl-drupal
           - plugin: isle
             packages: sitectl sitectl-isle sitectl-drupal
-    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@main
+    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@b83595e3368df033bdcca3651df0c4cf052dd112 # main
     with:
       plugin: ${{ matrix.plugin }}
       create-definition: default
