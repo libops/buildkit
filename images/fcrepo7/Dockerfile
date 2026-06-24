@@ -71,4 +71,4 @@ COPY --link rootfs /
 
 RUN chown -R tomcat:tomcat /opt/tomcat
 
-HEALTHCHECK CMD curl -s -H "Authorization: Bearer islandora" http://localhost:8080/fcrepo/rest/fcr:systeminfo | jq -e .version
+HEALTHCHECK CMD curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/fcrepo/rest/fcr:systeminfo | grep -Eq "^(200|401)$"
