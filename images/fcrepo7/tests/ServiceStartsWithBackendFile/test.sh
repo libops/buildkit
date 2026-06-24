@@ -29,7 +29,7 @@ if ! wait_for_fcrepo_rest http://localhost:8080/fcrepo/rest; then
 fi
 
 # Add some content.
-object=$(curl --fail -X POST -H "Authorization: Bearer islandora" -H "Content-Type:text/plain" "http://localhost:8080/fcrepo/rest" 2>/dev/null)
+object=$(curl --fail --user "${TOMCAT_ADMIN_NAME:-admin}:${TOMCAT_ADMIN_PASSWORD:-password}" -X POST -H "Content-Type:text/plain" "http://localhost:8080/fcrepo/rest" 2>/dev/null)
 echo "Create Object: $object"
 
 # All tests were successful
