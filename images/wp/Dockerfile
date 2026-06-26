@@ -21,6 +21,7 @@ RUN --mount=type=cache,id=wp-apk-${TARGETARCH},sharing=locked,target=/var/cache/
     cleanup.sh
 
 COPY --link config /var/www/bedrock/config
+COPY --link web /var/www/bedrock/web
 
 ENV \
     DB_HOST=mariadb \

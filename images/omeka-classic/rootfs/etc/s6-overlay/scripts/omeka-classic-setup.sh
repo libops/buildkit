@@ -37,24 +37,30 @@ function install_omeka {
     fi
 
     timeout 300 wait-for-open-port.sh localhost 80
-    curl -fsS -d "username=${OMEKA_CLASSIC_ADMIN_USERNAME}" \
-        -d "password=${OMEKA_CLASSIC_ADMIN_PASSWORD}" \
-        -d "password_confirm=${OMEKA_CLASSIC_ADMIN_PASSWORD}" \
-        -d "super_email=${OMEKA_CLASSIC_ADMIN_EMAIL}" \
-        -d "administrator_email=${OMEKA_CLASSIC_ADMIN_EMAIL}" \
-        -d "site_title=${OMEKA_CLASSIC_SITE_TITLE}" \
-        -d "tag_delimiter=," \
-        -d "fullsize_constraint=800" \
-        -d "thumbnail_constraint=200" \
-        -d "square_thumbnail_constraint=200" \
-        -d "per_page_admin=10" \
-        -d "per_page_public=10" \
-        -d "path_to_convert=/usr/bin" \
-        -d "install_submit=Install" \
+    curl -fsS \
+        --data-urlencode "username=${OMEKA_CLASSIC_ADMIN_USERNAME}" \
+        --data-urlencode "password=${OMEKA_CLASSIC_ADMIN_PASSWORD}" \
+        --data-urlencode "password_confirm=${OMEKA_CLASSIC_ADMIN_PASSWORD}" \
+        --data-urlencode "super_email=${OMEKA_CLASSIC_ADMIN_EMAIL}" \
+        --data-urlencode "administrator_email=${OMEKA_CLASSIC_ADMIN_EMAIL}" \
+        --data-urlencode "site_title=${OMEKA_CLASSIC_SITE_TITLE}" \
+        --data-urlencode "tag_delimiter=," \
+        --data-urlencode "fullsize_constraint=800" \
+        --data-urlencode "thumbnail_constraint=200" \
+        --data-urlencode "square_thumbnail_constraint=200" \
+        --data-urlencode "per_page_admin=10" \
+        --data-urlencode "per_page_public=10" \
+        --data-urlencode "path_to_convert=/usr/bin" \
+        --data-urlencode "install_submit=Install" \
         http://localhost/install/install.php >/tmp/omeka-classic-install.log 2>&1 || {
             cat /tmp/omeka-classic-install.log
             exit 1
         }
+    if ! check_installed; then
+        echo "Omeka Classic installer response did not create the expected database tables."
+        cat /tmp/omeka-classic-install.log
+        exit 1
+    fi
 }
 
 function main {

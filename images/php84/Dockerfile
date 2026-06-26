@@ -57,6 +57,7 @@ RUN --mount=type=cache,id=php84-apk-${TARGETARCH},sharing=locked,target=/var/cac
         php84-xsl=="${SOFTWARE_VERSION}" \
         php84-zip=="${SOFTWARE_VERSION}" \
     && \
+    ln -sf /usr/bin/php84 /usr/bin/php && \
     if ! getent group nginx >/dev/null; then addgroup -S nginx; fi && \
     if ! id -u nginx >/dev/null 2>&1; then adduser -S -D -H -h /var/lib/nginx -s /sbin/nologin -G nginx -g nginx nginx; fi && \
     addgroup nginx jwt && \

@@ -127,7 +127,11 @@ function unpack {
         if [[ -v STRIP ]]; then
             mkdir -p /tmp/unpack
             unzip "${file}" -d /tmp/unpack
-            mv "$(find /tmp/unpack/ -type d -mindepth 1 -maxdepth 1)"/* "${dest}"
+            local unpack_root
+            unpack_root="$(find /tmp/unpack/ -type d -mindepth 1 -maxdepth 1)"
+            shopt -s dotglob nullglob
+            mv "${unpack_root}"/* "${dest}"
+            shopt -u dotglob nullglob
             rm -fr /tmp/unpack
         else
             unzip "${file}" -d "${dest}"

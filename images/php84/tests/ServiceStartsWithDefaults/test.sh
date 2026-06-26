@@ -3,3 +3,6 @@ set -e
 
 s6-svwait -U /run/service/fpm
 test -S /run/php-fpm84/php-fpm84.sock
+command -v php
+php -v
+composer --version
