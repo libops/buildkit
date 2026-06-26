@@ -139,6 +139,7 @@ ENV \
 # are defined in /etc/defaults, as Docker does not support setting multiline
 # environment variables via ENV.
 ENV \
+    APP_UID=100 \
     DB_HOST=mariadb \
     DB_NAME=default \
     DB_PASSWORD=password \
@@ -148,7 +149,21 @@ ENV \
     DB_USER=default \
     DEVELOPMENT_ENVIRONMENT=false \
     JWT_ADMIN_TOKEN=islandora \
-    UID=
+    LIBOPS_PROJECT_ID= \
+    LIBOPS_SITE_ID= \
+    UID= \
+    VAULT_ADDR= \
+    VAULT_AUTH_METHOD=gcp \
+    VAULT_AUTH_PATH=gcp \
+    VAULT_AUTH_ROLE=site-workload \
+    VAULT_GCP_AUTH_TYPE=iam \
+    VAULT_GCP_JWT_TTL=600 \
+    VAULT_GCP_SERVICE_ACCOUNT=default \
+    VAULT_ORGANIZATION_SECRET_MOUNT=secret-organization \
+    VAULT_PROJECT_SECRET_MOUNT=secret-project \
+    VAULT_SECRET_OUTPUT_DIR=/run/secrets \
+    VAULT_SECRET_OVERWRITE=false \
+    VAULT_SITE_SECRET_MOUNT=secret-site
 
 COPY --link rootfs /
 

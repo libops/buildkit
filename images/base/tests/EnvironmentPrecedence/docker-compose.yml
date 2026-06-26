@@ -8,6 +8,8 @@ secrets:
   # Secrets are #1 on the precedence list.
   DB_PASSWORD:
     file: "./secrets/DB_PASSWORD"
+  GOOGLE_APPLICATION_CREDENTIALS:
+    file: "./secrets/GOOGLE_APPLICATION_CREDENTIALS"
   JWT_ADMIN_TOKEN:
     file: "./secrets/JWT_ADMIN_TOKEN"
   JWT_PRIVATE_KEY:
@@ -26,6 +28,7 @@ services:
       JWT_ADMIN_TOKEN: "JWT_ADMIN_TOKEN passed in value" # Should be overridden by the secret.
     secrets:
       - DB_PASSWORD # Should take precedence.
+      - GOOGLE_APPLICATION_CREDENTIALS # Should be exposed as a file path, not JSON content.
       - JWT_ADMIN_TOKEN # Should take precedence.
       - JWT_PRIVATE_KEY # Used to test template generation, should take precedence over /etc/defaults.
     volumes:

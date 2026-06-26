@@ -19,6 +19,7 @@ source /usr/local/share/isle/utilities.sh
 # ENV_VAR_NAME="ENV_VAR_NAME SOURCE value"
 expect "JWT_ADMIN_TOKEN" "JWT_ADMIN_TOKEN secret value"       # Secret should take precedence
 expect "DB_PASSWORD" "DB_PASSWORD secret value"               # Secret should take precedence
+expect "GOOGLE_APPLICATION_CREDENTIALS" "/run/secrets/GOOGLE_APPLICATION_CREDENTIALS" # Google credentials should remain file based
 expect "DB_NAME" "DB_NAME passed in value"                    # Environment passed into the container should take precedence
 expect "DB_USER" "default"                                    # Environment variables defined in Dockerfile should take precedence
 expect "JWT_PUBLIC_KEY" "$(cat /etc/defaults/JWT_PUBLIC_KEY)" # Unspecified /etc/defaults value is used.

@@ -151,6 +151,61 @@ func TestMariaDBLongrunStartsServer(t *testing.T) {
 	}
 }
 
+func TestBaseVaultSecretsBootstrap(t *testing.T) {
+	root := repoRoot(t)
+
+	dockerfile := filepath.Join(root, "images", "base", "Dockerfile")
+	dockerfileContent, err := os.ReadFile(dockerfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"APP_UID=100",
+		"LIBOPS_SITE_ID=",
+		"VAULT_ADDR=",
+		"VAULT_AUTH_METHOD=gcp",
+		"VAULT_GCP_AUTH_TYPE=iam",
+	} {
+		if !strings.Contains(string(dockerfileContent), want) {
+			t.Fatalf("%s missing %q", dockerfile, want)
+		}
+	}
+
+	dependency := filepath.Join(root, "images", "base", "rootfs", "etc", "s6-overlay", "s6-rc.d", "container-environment", "dependencies.d", "vault-secrets")
+	if _, err := os.Stat(dependency); err != nil {
+		t.Fatalf("container-environment must depend on vault-secrets: %v", err)
+	}
+
+	containerEnvironment := filepath.Join(root, "images", "base", "rootfs", "etc", "s6-overlay", "scripts", "container-environment.sh")
+	containerEnvironmentContent, err := os.ReadFile(containerEnvironment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(containerEnvironmentContent), "GOOGLE_APPLICATION_CREDENTIALS") {
+		t.Fatalf("%s must preserve GOOGLE_APPLICATION_CREDENTIALS as a file path", containerEnvironment)
+	}
+
+	script := filepath.Join(root, "images", "base", "rootfs", "etc", "s6-overlay", "scripts", "vault-secrets.sh")
+	scriptContent, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"GOOGLE_APPLICATION_CREDENTIALS",
+		"private_key_id",
+		"openssl dgst -sha256 -sign",
+		"secret-organization",
+		"secret-project",
+		"secret-site",
+		"chmod 0400",
+		"chown \"${app_uid}:0\"",
+	} {
+		if !strings.Contains(string(scriptContent), want) {
+			t.Fatalf("%s missing %q", script, want)
+		}
+	}
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

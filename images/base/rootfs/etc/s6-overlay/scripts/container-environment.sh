@@ -36,10 +36,27 @@ if [[ $(find /run/secrets -mindepth 1 -maxdepth 1 -type d | wc -l) -gt 0 ]]; the
         s6-envdir -fn -- /var/run/s6/container_environment \
         s6-dumpenv -- /var/run/s6/container_environment
 else
+    secret_envdir="/var/run/s6/secret_environment"
+    rm -rf "${secret_envdir}"
+    mkdir -p "${secret_envdir}"
+
+    for secret in /run/secrets/*; do
+        if [[ ! -f "${secret}" ]]; then
+            continue
+        fi
+
+        name="$(basename "${secret}")"
+        if [[ "${name}" = "GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+            printf '%s' "${secret}" > "${secret_envdir}/${name}"
+        else
+            cp "${secret}" "${secret_envdir}/${name}"
+        fi
+    done
+
     /command/exec -c \
         s6-envdir -fn -- /etc/defaults \
         s6-envdir -fn -- /var/run/s6/container_environment \
-        s6-envdir -fn -- /run/secrets \
+        s6-envdir -fn -- "${secret_envdir}" \
         s6-dumpenv -- /var/run/s6/container_environment
 fi
 

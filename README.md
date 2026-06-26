@@ -37,3 +37,4 @@ Changes in this fork:
 - Multiple versions of the same software/image can coexist (e.g. java, solr, fcrepo, php, etc.)
 - `base`  environment variables (e.g. `DB_NAME`) are overriden instead of `IMAGE_NAME_*` env vars
 - Removed Islandora multisite support
+- Added optional Vault-backed secret bootstrap
