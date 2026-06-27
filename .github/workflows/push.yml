@@ -55,7 +55,14 @@ jobs:
       test_level3: ${{ steps.plan.outputs.test_level3 }}
       test_level4: ${{ steps.plan.outputs.test_level4 }}
       has_builds: ${{ steps.plan.outputs.has_builds }}
-      sitectl_buildkit_tag: ${{ steps.plan.outputs.sitectl_buildkit_tag }}
+      sitectl_wp_image_tags: ${{ steps.plan.outputs.sitectl_wp_image_tags }}
+      sitectl_omeka_s_image_tags: ${{ steps.plan.outputs.sitectl_omeka_s_image_tags }}
+      sitectl_omeka_classic_image_tags: ${{ steps.plan.outputs.sitectl_omeka_classic_image_tags }}
+      sitectl_ojs_image_tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}
+      sitectl_drupal_image_tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}
+      sitectl_isle_template_image_tags: ${{ steps.plan.outputs.sitectl_isle_template_image_tags }}
+      sitectl_isle_libops_image_tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}
+      sitectl_isle_images: ${{ steps.plan.outputs.sitectl_isle_images }}
     steps:
       - uses: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" # v6
         with:
@@ -99,8 +106,20 @@ jobs:
           if [ "$VERSION_TAGS" = "true" ]; then
             mode="version"
           fi
-          tag="$(./ci/image-metadata.sh first-tag wp-php84 "$mode" "$FALLBACK_TAG")"
-          echo "sitectl_buildkit_tag=${tag}" >> "$GITHUB_OUTPUT"
+          first_tag() {
+            ./ci/image-metadata.sh first-tag "$1" "$mode" "$FALLBACK_TAG"
+          }
+
+          {
+            echo "sitectl_wp_image_tags=wp=$(first_tag wp-php84)"
+            echo "sitectl_omeka_s_image_tags=omeka-s=$(first_tag omeka-s-php84)"
+            echo "sitectl_omeka_classic_image_tags=omeka-classic=$(first_tag omeka-classic-php84)"
+            echo "sitectl_ojs_image_tags=ojs=$(first_tag ojs-php84)"
+            echo "sitectl_drupal_image_tags=drupal=$(first_tag drupal-php84)"
+            echo "sitectl_isle_template_image_tags=drupal=$(first_tag drupal-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
+            echo "sitectl_isle_libops_image_tags=drupal=$(first_tag islandora-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
+            echo "sitectl_isle_images="
+          } >> "$GITHUB_OUTPUT"
 
       - name: Summary
         run: |
@@ -111,7 +130,13 @@ jobs:
           echo "Level 2 tests: ${{ steps.plan.outputs.test_level2 }}"
           echo "Level 3 tests: ${{ steps.plan.outputs.test_level3 }}"
           echo "Level 4 tests: ${{ steps.plan.outputs.test_level4 }}"
-          echo "sitectl buildkit tag: ${{ steps.plan.outputs.sitectl_buildkit_tag }}"
+          echo "sitectl wp image tags: ${{ steps.plan.outputs.sitectl_wp_image_tags }}"
+          echo "sitectl omeka-s image tags: ${{ steps.plan.outputs.sitectl_omeka_s_image_tags }}"
+          echo "sitectl omeka-classic image tags: ${{ steps.plan.outputs.sitectl_omeka_classic_image_tags }}"
+          echo "sitectl ojs image tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}"
+          echo "sitectl drupal image tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}"
+          echo "sitectl isle template image tags: ${{ steps.plan.outputs.sitectl_isle_template_image_tags }}"
+          echo "sitectl isle libops image tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}"
 
   build-level-0:
     if: ${{ needs.plan.outputs.level0 != '[]' }}
@@ -308,27 +333,52 @@ jobs:
           - plugin: wp
             packages: sitectl sitectl-wp
             create-args: ""
+            image-tags: ${{ needs.plan.outputs.sitectl_wp_image_tags }}
+            images: ""
           - plugin: omeka-s
             packages: sitectl sitectl-omeka-s
             create-args: ""
+            image-tags: ${{ needs.plan.outputs.sitectl_omeka_s_image_tags }}
+            images: ""
           - plugin: omeka-classic
             packages: sitectl sitectl-omeka-classic
             create-args: ""
+            image-tags: ${{ needs.plan.outputs.sitectl_omeka_classic_image_tags }}
+            images: ""
           - plugin: ojs
             packages: sitectl sitectl-ojs
             create-args: ""
+            image-tags: ${{ needs.plan.outputs.sitectl_ojs_image_tags }}
+            images: ""
           - plugin: drupal
             packages: sitectl sitectl-drupal
             create-args: ""
+            image-tags: ${{ needs.plan.outputs.sitectl_drupal_image_tags }}
+            images: ""
           - plugin: isle
             packages: sitectl sitectl-isle sitectl-drupal
             create-args: >-
+              --template-repo https://github.com/Islandora-Devops/isle-site-template
               --fcrepo off
               --blazegraph off
               --isle-file-system-uri private
               --iiif triplet
               --iiif-topology disabled
               --bot-mitigation off
+            image-tags: ${{ needs.plan.outputs.sitectl_isle_template_image_tags }}
+            images: ${{ needs.plan.outputs.sitectl_isle_images }}
+          - plugin: isle
+            packages: sitectl sitectl-isle sitectl-drupal
+            create-args: >-
+              --template-repo https://github.com/libops/isle
+              --fcrepo off
+              --blazegraph off
+              --isle-file-system-uri private
+              --iiif triplet
+              --iiif-topology disabled
+              --bot-mitigation off
+            image-tags: ${{ needs.plan.outputs.sitectl_isle_libops_image_tags }}
+            images: ${{ needs.plan.outputs.sitectl_isle_images }}
 
     uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@main
     with:
@@ -337,7 +387,8 @@ jobs:
       create-args: ${{ matrix.create-args }}
       checkout-source: template
       project-path: generated-${{ matrix.plugin }}
-      buildkit-tag: ${{ needs.plan.outputs.sitectl_buildkit_tag }}
+      image-tags: ${{ matrix.image-tags }}
+      images: ${{ matrix.images }}
       packages: ${{ matrix.packages }}
     permissions:
       contents: read
