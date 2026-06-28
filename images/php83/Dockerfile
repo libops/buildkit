@@ -58,6 +58,9 @@ RUN --mount=type=cache,id=php83-apk-${TARGETARCH},sharing=locked,target=/var/cac
         php83-zip=="${SOFTWARE_VERSION}" \
     && \
     ln -sf /usr/bin/php83 /usr/bin/php && \
+    ln -sf /usr/bin/php83 /usr/local/bin/php && \
+    command -v php >/dev/null && \
+    php -v >/dev/null && \
     if ! getent group nginx >/dev/null; then addgroup -S nginx; fi && \
     if ! id -u nginx >/dev/null 2>&1; then adduser -S -D -H -h /var/lib/nginx -s /sbin/nologin -G nginx -g nginx nginx; fi && \
     addgroup nginx jwt && \
@@ -88,5 +91,8 @@ ENV \
     SOLR_HOCR_PLUGIN_PATH=/opt/solr/server/solr/contrib/ocrhighlighting/lib
 
 COPY --link rootfs /
+
+RUN command -v php >/dev/null && \
+    composer --version
 
 HEALTHCHECK CMD s6-svstat -u /run/service/fpm
