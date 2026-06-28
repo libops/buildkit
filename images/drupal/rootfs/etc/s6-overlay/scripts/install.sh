@@ -68,6 +68,20 @@ function install_site {
         --db-url="mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 }
 
+function run_install_hooks {
+    local hook
+    if [ ! -d /etc/s6-overlay/scripts/install.d ]; then
+        return 0
+    fi
+    for hook in /etc/s6-overlay/scripts/install.d/*; do
+        if [ ! -f "${hook}" ] || [ ! -x "${hook}" ]; then
+            continue
+        fi
+        echo "Running Drupal install hook ${hook}"
+        "${hook}"
+    done
+}
+
 function finished {
     touch /installed
     cat <<-EOT
@@ -99,6 +113,7 @@ function main {
     else
         echo "Installing"
         install_site
+        run_install_hooks
     fi
     finished
 }
