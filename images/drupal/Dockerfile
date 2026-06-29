@@ -9,7 +9,19 @@ WORKDIR /var/www/drupal
 
 RUN mkdir -p /var/www/drupal/config/sync /var/www/drupal/web/sites/default/files /var/www/drupal/private/php && \
     chown -R nginx:nginx /var/www/drupal && \
-    cleanup.sh
+    cleanup.sh && \
+    if ! command -v php >/dev/null 2>&1; then \
+        php_binary="$(find /usr/bin -maxdepth 1 -type f -name 'php[0-9][0-9]' | sort | tail -n 1)" && \
+        if [ -z "${php_binary}" ]; then \
+            echo "Drupal base requires a PHP binary in PATH" >&2; \
+            exit 127; \
+        fi && \
+        ln -sf "${php_binary}" /usr/bin/php && \
+        ln -sf "${php_binary}" /usr/local/bin/php; \
+    fi && \
+    command -v php >/dev/null && \
+    php -v >/dev/null && \
+    composer --version >/dev/null
 
 ENV \
     DB_HOST=mariadb \
