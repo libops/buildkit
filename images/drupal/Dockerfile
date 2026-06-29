@@ -39,8 +39,14 @@ ENV \
     DRUPAL_DEFAULT_NAME=Drupal \
     DRUPAL_DEFAULT_PROFILE=standard \
     DRUPAL_DEFAULT_SALT=9PPaL0CxZAIcq6h5wxgDGlCZrp7JdT_x7v9gVzpdbUjMt1PqDz3uD0Zy-i16DuJ1-Htfshhqeg \
+    DRUPAL_DEFAULT_SITE_URL=http://localhost \
+    DRUPAL_DEFAULT_SOLR_CORE=default \
+    DRUPAL_DEFAULT_SOLR_HOST=solr \
+    DRUPAL_DEFAULT_SOLR_PORT=8983 \
     DRUPAL_DEFAULT_SUBDIR=default \
     DRUPAL_ENABLE_HTTPS=false \
+    LIBOPS_SMTP_HOST=host.docker.internal \
+    LIBOPS_SMTP_PORT=25 \
     NGINX_CLIENT_BODY_TIMEOUT=60s \
     NGINX_CLIENT_MAX_BODY_SIZE=0 \
     NGINX_ERROR_LOG_LEVEL=warn \
@@ -72,4 +78,4 @@ COPY --link rootfs /
 
 RUN chown -R nginx:nginx /var/www/drupal
 
-HEALTHCHECK CMD curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD { [ ! -f /var/www/drupal/web/core/lib/Drupal.php ] || [ -f /installed ]; } && curl -s http://localhost/status | grep -q pool

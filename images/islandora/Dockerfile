@@ -17,4 +17,4 @@ COPY --link rootfs /
 RUN mkdir -p /var/www/drupal && \
     chown -R nginx:nginx /var/www/drupal /usr/share/drush
 
-HEALTHCHECK CMD curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD { [ ! -f /var/www/drupal/web/core/lib/Drupal.php ] || [ -f /installed ]; } && curl -s http://localhost/status | grep -q pool

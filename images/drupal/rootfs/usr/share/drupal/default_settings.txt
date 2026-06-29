@@ -1,5 +1,5 @@
 /**
- *  Section appended onto drupal/core default.settings.php via "drupal-scaffold" in composer.json.
+ * Section appended onto drupal/core default.settings.php via drupal-scaffold.
  */
 
 // Let Drush use all the memory available.
@@ -7,11 +7,27 @@ if (PHP_SAPI === 'cli') {
   ini_set('memory_limit', '-1');
 }
 
+$libops_env_path = '/var/run/s6/container_environment/';
+$libops_env = static function (string $name, ?string $default = NULL) use ($libops_env_path): ?string {
+  $file = $libops_env_path . $name;
+  if (!is_readable($file)) {
+    return $default;
+  }
+
+  $value = rtrim(file_get_contents($file), "\r\n");
+  if ($value === '' && $default !== NULL) {
+    return $default;
+  }
+
+  return $value;
+};
+
 // Required when running Drupal behind a reverse proxy.
 $settings['reverse_proxy'] = TRUE;
-$settings['reverse_proxy_addresses'] = array($_SERVER['REMOTE_ADDR']);
-$settings['reverse_proxy_trusted_headers'] = \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR | 
-\Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PROTO | \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PORT;
+$settings['reverse_proxy_addresses'] = [$_SERVER['REMOTE_ADDR']];
+$settings['reverse_proxy_trusted_headers'] = \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR |
+  \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PROTO |
+  \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PORT;
 
 /**
  * Private file path:
@@ -35,53 +51,65 @@ $settings['config_sync_directory'] = '/var/www/drupal/config/sync';
 global $content_directories;
 $content_directories['sync'] = '/var/www/drupal/content/sync';
 
-// Container environment variable path.
-$path = "/var/run/s6/container_environment/";
+// Solr settings are applied when the app includes Search API Solr config.
+$config['search_api.server.default_solr_server']['backend_config']['connector_config']['host'] = $libops_env('DRUPAL_DEFAULT_SOLR_HOST', 'solr');
+$config['search_api.server.default_solr_server']['backend_config']['connector_config']['port'] = $libops_env('DRUPAL_DEFAULT_SOLR_PORT', '8983');
+$config['search_api.server.default_solr_server']['backend_config']['connector_config']['core'] = $libops_env('DRUPAL_DEFAULT_SOLR_CORE', 'default');
 
-// Some configurations are derived from environment variables.
-$config['islandora.settings']['broker_url'] = file_get_contents($path . 'DRUPAL_DEFAULT_BROKER_URL');
-$config['islandora.settings']['broker_user'] = file_exists($path . 'DRUPAL_DEFAULT_BROKER_USER') ? file_get_contents($path . 'DRUPAL_DEFAULT_BROKER_USER') : NULL;
-$config['islandora.settings']['broker_password'] = file_exists($path . 'DRUPAL_DEFAULT_BROKER_PASSWORD') ? file_get_contents($path . 'DRUPAL_DEFAULT_BROKER_PASSWORD') : NULL;
-$config['islandora_iiif.settings']['iiif_server'] = file_get_contents($path . 'DRUPAL_DEFAULT_CANTALOUPE_URL');
-$config['openseadragon.settings']['iiif_server'] = file_get_contents($path . 'DRUPAL_DEFAULT_CANTALOUPE_URL');
-$config['search_api.server.default_solr_server']['backend_config']['connector_config']['host'] = file_get_contents($path . 'DRUPAL_DEFAULT_SOLR_HOST');
-$config['search_api.server.default_solr_server']['backend_config']['connector_config']['port'] = file_get_contents($path . 'DRUPAL_DEFAULT_SOLR_PORT');
-$config['search_api.server.default_solr_server']['backend_config']['connector_config']['core'] = file_get_contents($path . 'DRUPAL_DEFAULT_SOLR_CORE');
+$smtp_host = $libops_env('LIBOPS_SMTP_HOST', 'host.docker.internal');
+$smtp_port = (int) $libops_env('LIBOPS_SMTP_PORT', '25');
+$config['system.mail']['interface']['default'] = 'symfony_mailer';
+$config['system.mail']['mailer_dsn'] = [
+  'scheme' => 'smtp',
+  'host' => $smtp_host,
+  'user' => NULL,
+  'password' => NULL,
+  'port' => $smtp_port,
+  'options' => [],
+];
 
-// Others are hardcoded.
+// Islandora-specific config is enabled when the matching environment is set.
+if (($broker_url = $libops_env('DRUPAL_DEFAULT_BROKER_URL')) !== NULL) {
+  $config['islandora.settings']['broker_url'] = $broker_url;
+  $config['islandora.settings']['broker_user'] = $libops_env('DRUPAL_DEFAULT_BROKER_USER');
+  $config['islandora.settings']['broker_password'] = $libops_env('DRUPAL_DEFAULT_BROKER_PASSWORD');
+}
+if (($iiif_server = $libops_env('DRUPAL_DEFAULT_CANTALOUPE_URL')) !== NULL) {
+  $config['islandora_iiif.settings']['iiif_server'] = $iiif_server;
+  $config['openseadragon.settings']['iiif_server'] = $iiif_server;
+}
+if (($fcrepo_url = $libops_env('DRUPAL_DEFAULT_FCREPO_URL')) !== NULL) {
+  $settings['flysystem']['fedora']['driver'] = 'fedora';
+  $settings['flysystem']['fedora']['config']['root'] = $fcrepo_url;
+}
 $config['key.key.islandora_rsa_key']['key_provider_settings']['file_location'] = '/opt/keys/jwt/private.key';
 
-// Some settings are derived from environment variables.
-$settings['hash_salt'] = file_get_contents($path . 'DRUPAL_DEFAULT_SALT');
-$trusted_host = trim(file_get_contents($path . 'DRUPAL_DEFAULT_SITE_URL'));
-$trusted_host = parse_url($trusted_host, PHP_URL_HOST) ?: trim(preg_replace('#^https?://#', '', $trusted_host), '/');
+$settings['hash_salt'] = $libops_env('DRUPAL_DEFAULT_SALT', '9PPaL0CxZAIcq6h5wxgDGlCZrp7JdT_x7v9gVzpdbUjMt1PqDz3uD0Zy-i16DuJ1-Htfshhqeg');
+$trusted_host = $libops_env('DRUPAL_DEFAULT_SITE_URL', 'http://localhost');
+$trusted_host = parse_url($trusted_host, PHP_URL_HOST) ?: $trusted_host;
+$trusted_host = preg_replace('#^https?://#', '', $trusted_host);
+$trusted_host = preg_replace('#/.*$#', '', $trusted_host);
+$trusted_host = preg_replace('#:\d+$#', '', $trusted_host);
 $settings['trusted_host_patterns'] = [
   0 => '^' . preg_quote($trusted_host, '/') . '$',
 ];
 
-// Database settings are also derived from environment variables.
 $databases['default']['default'] = [
-  'database' => file_get_contents($path . 'DB_NAME'),
-  'username' => file_get_contents($path . 'DB_USER'),
-  'password' => file_get_contents($path . 'DB_PASSWORD'),
-  'host' => file_get_contents($path . 'DB_HOST'),
-  'port' => file_get_contents($path . 'DB_PORT'),
+  'database' => $libops_env('DB_NAME', 'drupal'),
+  'username' => $libops_env('DB_USER', 'drupal'),
+  'password' => $libops_env('DB_PASSWORD', 'changeme'),
+  'host' => $libops_env('DB_HOST', 'mariadb'),
+  'port' => $libops_env('DB_PORT', '3306'),
   'prefix' => '',
   'driver' => 'mysql',
   'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
 ];
 
-// only config fedora flysystem driver if the drupal service set a fcrepo URL
-if (file_exists($path . 'DRUPAL_DEFAULT_FCREPO_URL')) {
-  $settings['flysystem']['fedora']['driver'] = 'fedora';
-  $settings['flysystem']['fedora']['config']['root'] = file_get_contents($path . 'DRUPAL_DEFAULT_FCREPO_URL');
-}
-
-// Change the php_storage settings in your setting.php. It is recommend that
-// this directory be outside out of the docroot.
+// Change the php_storage settings in settings.php. This directory should be
+// outside of the docroot.
 $settings['php_storage']['twig']['directory'] = $settings['file_private_path'] . '/php';
 $settings['php_storage']['twig']['secret'] = $settings['hash_salt'];
 
 /**
- *  End Section.
+ * End Section.
  */

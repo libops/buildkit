@@ -32,10 +32,15 @@ elif [ "$EXISTING_USER" != "nginx" ]; then
   usermod -u "${UID}" nginx
 fi
 
-# Fix ownership if needed
-if [[ "$(stat -c %u /var/www/drupal)" != "${UID}" ]]; then
-  chown -R nginx:nginx /var/www/drupal
-fi
+# Fix writable runtime directories if needed. The application tree is owned in
+# the image build and should not be recursively rewritten on every boot.
+for writable_dir in \
+  /var/www/drupal/private \
+  /var/www/drupal/web/sites/default/files; do
+  if [ -d "${writable_dir}" ] && [[ "$(stat -c %u "${writable_dir}")" != "${UID}" ]]; then
+    chown -R nginx:nginx "${writable_dir}"
+  fi
+done
 
 # Always ensure nginx has access to the socket
 for fpm_dir in /run/php-fpm*; do
