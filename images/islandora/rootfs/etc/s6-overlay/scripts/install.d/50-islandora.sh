@@ -34,7 +34,6 @@ function configure_islandora {
     drush --root=/var/www/drupal --uri="${uri}" migrate:import --tag=islandora
     drush --root=/var/www/drupal --uri="${uri}" cron || true
     drush --root=/var/www/drupal --uri="${uri}" search-api:index || true
-    drush --root=/var/www/drupal --uri="${uri}" cache:rebuild
 }
 
 function main {

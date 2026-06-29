@@ -100,14 +100,16 @@ function wait_for_connection {
 }
 
 function mysql_validate_credentials {
-    mariadb-admin \
-        -s \
+    mariadb \
+        --batch \
+        --skip-column-names \
         --user="${USER}" \
         --password="${PASSWORD}" \
         --host="${HOST}" \
         --port="${PORT}" \
         --protocol=tcp \
-        ping
+        --execute "SELECT 1" \
+        >/dev/null
 }
 
 function validate_credentials {

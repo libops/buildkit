@@ -82,6 +82,16 @@ function run_install_hooks {
     done
 }
 
+function drush_uri {
+    echo "${DRUSH_OPTIONS_URI:-${DRUPAL_DEFAULT_SITE_URL:-http://localhost}}"
+}
+
+function rebuild_drupal_cache {
+    local uri
+    uri="$(drush_uri)"
+    drush --root=/var/www/drupal/web --uri="${uri}" cache:rebuild
+}
+
 function finished {
     touch /installed
     cat <<-EOT
@@ -114,6 +124,7 @@ function main {
         echo "Installing"
         install_site
         run_install_hooks
+        rebuild_drupal_cache
     fi
     finished
 }
