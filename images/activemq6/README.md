@@ -1,6 +1,6 @@
 # ActiveMQ
 
-Docker image for [ActiveMQ] version 6.2.6.
+Docker image for [ActiveMQ] version 6.2.7.
 
 Built from [libops/isle-buildkit activemq7](https://github.com/libops/buildkit/tree/main/images/activemq6)
 
