@@ -1,9 +1,9 @@
 FROM java25
 
 ARG TARGETARCH
-# renovate: datasource=custom.apache-downloads depName=apache-tomcat packageName=tomcat/tomcat-11
+# renovate: datasource=custom.apache-downloads depName=apache-tomcat11 packageName=tomcat/tomcat-11
 ARG SOFTWARE_VERSION=11.0.23
-ARG TOMCAT_FILE_SHA256="73d239232f14dfde2278e8d931f767ed454aed9b018e4d70a1d404c2579b5998"
+ARG TOMCAT_FILE_SHA256="0473e3e87c88ecf5c1ac3cd046b504573aa4de39fc5f4bf865ae807cf8c5546e"
 
 EXPOSE 8080
 
