@@ -151,6 +151,22 @@ func TestMariaDBLongrunStartsServer(t *testing.T) {
 	}
 }
 
+func TestOJSEnableBeaconTemplateUsesTruthyHelper(t *testing.T) {
+	root := repoRoot(t)
+	templateFile := filepath.Join(root, "images", "ojs", "rootfs", "etc", "confd", "templates", "config.inc.tmpl")
+	content, err := os.ReadFile(templateFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(content)
+	if strings.Contains(got, `if getenv "OJS_ENABLE_BEACON"`) {
+		t.Fatalf("%s treats any non-empty OJS_ENABLE_BEACON value as On", templateFile)
+	}
+	if !strings.Contains(got, `define "booleanOnOff"`) || !strings.Contains(got, `enable_beacon = {{ template "booleanOnOff" (getenv "OJS_ENABLE_BEACON") }}`) {
+		t.Fatalf("%s must render OJS_ENABLE_BEACON through the booleanOnOff helper", templateFile)
+	}
+}
+
 func TestBaseVaultSecretsBootstrap(t *testing.T) {
 	root := repoRoot(t)
 

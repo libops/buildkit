@@ -62,6 +62,7 @@ jobs:
       sitectl_drupal_image_tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}
       sitectl_isle_libops_image_tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}
       sitectl_isle_images: ${{ steps.plan.outputs.sitectl_isle_images }}
+      sitectl_create_smoke_matrix: ${{ steps.plan.outputs.sitectl_create_smoke_matrix }}
     steps:
       - uses: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" # v6
         with:
@@ -109,14 +110,65 @@ jobs:
             ./ci/image-metadata.sh first-tag "$1" "$mode" "$FALLBACK_TAG"
           }
 
+          planned_tag_assignment() {
+            local service="$1"
+            local image="$2"
+            if grep -Fq "\"${image}\"" build-plan.out; then
+              printf '%s=%s' "$service" "$(first_tag "$image")"
+            fi
+          }
+
+          add_smoke_row() {
+            local plugin="$1"
+            local packages="$2"
+            local create_args="$3"
+            local image_tags="$4"
+            local images="$5"
+            if [ -z "${image_tags// }" ]; then
+              return
+            fi
+            smoke_matrix="$(
+              jq -c \
+                --arg plugin "$plugin" \
+                --arg packages "$packages" \
+                --arg create_args "$create_args" \
+                --arg image_tags "$image_tags" \
+                --arg images "$images" \
+                '. + [{
+                  "plugin": $plugin,
+                  "packages": $packages,
+                  "create-args": $create_args,
+                  "image-tags": $image_tags,
+                  "images": $images
+                }]' <<<"$smoke_matrix"
+            )"
+          }
+
+          sitectl_wp_image_tags="$(planned_tag_assignment wp wp-php84)"
+          sitectl_omeka_s_image_tags="$(planned_tag_assignment omeka-s omeka-s-php84)"
+          sitectl_omeka_classic_image_tags="$(planned_tag_assignment omeka-classic omeka-classic-php84)"
+          sitectl_ojs_image_tags="$(planned_tag_assignment ojs ojs-php84)"
+          sitectl_drupal_image_tags="$(planned_tag_assignment drupal drupal-php84)"
+          sitectl_isle_libops_image_tags="$(planned_tag_assignment drupal islandora-php84)"
+          sitectl_isle_images=""
+
+          smoke_matrix='[]'
+          add_smoke_row "wp" "sitectl sitectl-wp" "" "$sitectl_wp_image_tags" ""
+          add_smoke_row "omeka-s" "sitectl sitectl-omeka-s" "" "$sitectl_omeka_s_image_tags" ""
+          add_smoke_row "omeka-classic" "sitectl sitectl-omeka-classic" "" "$sitectl_omeka_classic_image_tags" ""
+          add_smoke_row "ojs" "sitectl sitectl-ojs" "" "$sitectl_ojs_image_tags" ""
+          add_smoke_row "drupal" "sitectl sitectl-drupal" "" "$sitectl_drupal_image_tags" ""
+          add_smoke_row "isle" "sitectl sitectl-isle sitectl-drupal" "--template-repo https://github.com/libops/isle --fcrepo off --blazegraph off --isle-file-system-uri private --iiif triplet --iiif-topology disabled --bot-mitigation off" "$sitectl_isle_libops_image_tags" "$sitectl_isle_images"
+
           {
-            echo "sitectl_wp_image_tags=wp=$(first_tag wp-php84)"
-            echo "sitectl_omeka_s_image_tags=omeka-s=$(first_tag omeka-s-php84)"
-            echo "sitectl_omeka_classic_image_tags=omeka-classic=$(first_tag omeka-classic-php84)"
-            echo "sitectl_ojs_image_tags=ojs=$(first_tag ojs-php84)"
-            echo "sitectl_drupal_image_tags=drupal=$(first_tag drupal-php84)"
-            echo "sitectl_isle_libops_image_tags=drupal=$(first_tag islandora-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
-            echo "sitectl_isle_images="
+            echo "sitectl_wp_image_tags=${sitectl_wp_image_tags}"
+            echo "sitectl_omeka_s_image_tags=${sitectl_omeka_s_image_tags}"
+            echo "sitectl_omeka_classic_image_tags=${sitectl_omeka_classic_image_tags}"
+            echo "sitectl_ojs_image_tags=${sitectl_ojs_image_tags}"
+            echo "sitectl_drupal_image_tags=${sitectl_drupal_image_tags}"
+            echo "sitectl_isle_libops_image_tags=${sitectl_isle_libops_image_tags}"
+            echo "sitectl_isle_images=${sitectl_isle_images}"
+            echo "sitectl_create_smoke_matrix=${smoke_matrix}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summary
@@ -134,6 +186,7 @@ jobs:
           echo "sitectl ojs image tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}"
           echo "sitectl drupal image tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}"
           echo "sitectl isle libops image tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}"
+          echo "sitectl create smoke matrix: ${{ steps.plan.outputs.sitectl_create_smoke_matrix }}"
 
   build-level-0:
     if: ${{ needs.plan.outputs.level0 != '[]' }}
@@ -321,49 +374,12 @@ jobs:
       packages: read
 
   sitectl-create-smoke-test:
-    if: ${{ always() && !cancelled() && !failure() }}
+    if: ${{ always() && needs.plan.outputs.sitectl_create_smoke_matrix != '[]' && !cancelled() && !failure() }}
     needs: [plan, test-level-4]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - plugin: wp
-            packages: sitectl sitectl-wp
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_wp_image_tags }}
-            images: ""
-          - plugin: omeka-s
-            packages: sitectl sitectl-omeka-s
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_omeka_s_image_tags }}
-            images: ""
-          - plugin: omeka-classic
-            packages: sitectl sitectl-omeka-classic
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_omeka_classic_image_tags }}
-            images: ""
-          - plugin: ojs
-            packages: sitectl sitectl-ojs
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_ojs_image_tags }}
-            images: ""
-          - plugin: drupal
-            packages: sitectl sitectl-drupal
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_drupal_image_tags }}
-            images: ""
-          - plugin: isle
-            packages: sitectl sitectl-isle sitectl-drupal
-            create-args: >-
-              --template-repo https://github.com/libops/isle
-              --fcrepo off
-              --blazegraph off
-              --isle-file-system-uri private
-              --iiif triplet
-              --iiif-topology disabled
-              --bot-mitigation off
-            image-tags: ${{ needs.plan.outputs.sitectl_isle_libops_image_tags }}
-            images: ${{ needs.plan.outputs.sitectl_isle_images }}
+        include: ${{ fromJson(needs.plan.outputs.sitectl_create_smoke_matrix) }}
 
     uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@main
     with:
