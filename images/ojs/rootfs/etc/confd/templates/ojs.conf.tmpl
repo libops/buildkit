@@ -26,7 +26,7 @@ location ~ \.php(/|$) {
     }
 
     fastcgi_pass unix:{{ getenv "PHP_FPM_SOCKET" }};
-    {{ if eq (getenv "OJS_ENABLE_HTTPS") "true" }}
+    {{ if eq (getenv "INGRESS_SCHEME") "https" }}
     fastcgi_param HTTPS on;
     fastcgi_param HTTP_SCHEME https;
     {{ end }}

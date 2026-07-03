@@ -82,8 +82,22 @@ function run_install_hooks {
     done
 }
 
+function ingress_primary_hostname {
+    local hostnames hostname
+    hostnames="${INGRESS_HOSTNAMES:-localhost}"
+    hostname="${hostnames%%,*}"
+    hostname="${hostname//[[:space:]]/}"
+    echo "${hostname:-localhost}"
+}
+
+function ingress_base_url {
+    local scheme
+    scheme="${INGRESS_SCHEME:-http}"
+    echo "${scheme:-http}://$(ingress_primary_hostname)"
+}
+
 function drush_uri {
-    echo "${DRUSH_OPTIONS_URI:-${DRUPAL_DEFAULT_SITE_URL:-http://localhost}}"
+    ingress_base_url
 }
 
 function rebuild_drupal_cache {

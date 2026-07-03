@@ -68,6 +68,7 @@ RUN --mount=type=cache,id=archivesspace-downloads-${TARGETARCH},sharing=locked,t
 
 ENV \
     ARCHIVESSPACE_LOGS=/dev/null \
+    APPCONFIG_SOLR_URL= \
     ASPACE_DB_MIGRATE=true \
     ASPACE_GC_OPTS="-XX:+UseG1GC -XX:NewRatio=1" \
     ASPACE_JAVA_XMX=-Xmx2048m \
@@ -76,9 +77,14 @@ ENV \
     DB_PASSWORD=changeme \
     DB_PORT=3306 \
     DB_USER=archivesspace \
+    INGRESS_HOSTNAMES=localhost \
+    INGRESS_SCHEME=http \
     JDK_JAVA_OPTIONS="--add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED" \
     LANG=C.UTF-8 \
     LD_PRELOAD=/usr/lib/libjemalloc.so.2 \
+    SMTP_FROM= \
+    SMTP_HOST=host.docker.internal \
+    SMTP_PORT=25 \
     TZ=UTC
 
 COPY --link rootfs /

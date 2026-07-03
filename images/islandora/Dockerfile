@@ -10,11 +10,12 @@ ENV \
     DRUPAL_DEFAULT_INSTALL=true \
     DRUPAL_DEFAULT_NAME=Islandora \
     DRUPAL_DEFAULT_PROFILE=standard \
-    DRUPAL_ENABLE_HTTPS=true
+    INGRESS_HOSTNAMES=localhost,drupal.internal \
+    INGRESS_SCHEME=https
 
 COPY --link rootfs /
 
 RUN mkdir -p /var/www/drupal && \
-    chown -R nginx:nginx /var/www/drupal /usr/share/drush
+    chown -R nginx:nginx /var/www/drupal
 
 HEALTHCHECK CMD { [ ! -f /var/www/drupal/web/core/lib/Drupal.php ] || [ -f /installed ]; } && curl -s http://localhost/status | grep -q pool

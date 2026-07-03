@@ -1,4 +1,4 @@
-# Drupal
+# Islandora
 
 Docker image for [Drupal].
 
@@ -27,16 +27,17 @@ additional settings, volumes, ports, etc.
 
 | Environment Variable     | Default | Description                                                                        |
 | :----------------------- | :------ | :--------------------------------------------------------------------------------- |
-| DRUPAL_ENABLE_HTTPS      | true    | Inform PHP that `https` should be used.                                            |
+| INGRESS_HOSTNAMES        | localhost,drupal.internal | Comma-separated hostnames accepted by the application.                           |
+| INGRESS_SCHEME           | https   | Inform PHP that `https` should be used when set to `https`.                       |
 | DRUPAL_REVERSE_PROXY_IPS |         | Use the IP address for the host 'traefik' if found otherwise default to `0.0.0.0`. |
 
 ### Database Settings
 
-[Drupal] can make use of different database backends for storage. Please see the
-documentation in the [base image] for more information about the default
-database connection configuration.
-
-Use the base image `DB_*` settings for the single Islandora site database.
+[Drupal] can make use of different database backends for storage. Use the base
+image `DB_*` settings for the single Islandora site database. Docker secrets are
+imported into the container environment before confd renders Drupal settings, so
+`DB_PASSWORD` and the other database values are written into the generated
+settings include instead of being read by Drupal on each request.
 
 ### JWT Settings
 
@@ -53,9 +54,6 @@ derivative service and `fcrepo` based containers.
 | DRUPAL_DEFAULT_ACCOUNT_EMAIL    | webmaster@localhost.com | The email to use for the admin account             |
 | DRUPAL_DEFAULT_ACCOUNT_NAME     | admin                   | The Drupal administrator user                      |
 | DRUPAL_DEFAULT_ACCOUNT_PASSWORD | password                | The Drupal administrator user password             |
-| DRUPAL_DEFAULT_DB_NAME          | drupal_default          | The name of the sites database                     |
-| DRUPAL_DEFAULT_DB_PASSWORD      | password                | The database users password                        |
-| DRUPAL_DEFAULT_DB_USER          | drupal_default          | The database user used by the site                 |
 | DRUPAL_DEFAULT_EMAIL            | webmaster@localhost.com | The Drupal administrators email                    |
 | DRUPAL_DEFAULT_LOCALE           | en                      | The Drupal sites locale                            |
 | DRUPAL_DEFAULT_NAME             | default                 | The Drupal sites name                              |
@@ -64,8 +62,7 @@ derivative service and `fcrepo` based containers.
 | DRUPAL_DEFAULT_CONFIGDIR        |                         | Install using existing config files from directory |
 | DRUPAL_DEFAULT_INSTALL          | true                    | Perform install if not already installed           |
 
-Of the above you should provide at a minium your own passwords when running in
-production.
+Provide your own passwords when running in production.
 
 [base image]: ../base/README.md
 [Drupal]: https://www.drupal.org/

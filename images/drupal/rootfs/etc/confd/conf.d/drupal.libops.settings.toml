@@ -1,0 +1,7 @@
+[template]
+src = "drupal.libops.settings.php.tmpl"
+dest = "/etc/drupal/libops.settings.php"
+uid = 0
+gid = 0
+mode = "0644"
+keys = [ "/" ]

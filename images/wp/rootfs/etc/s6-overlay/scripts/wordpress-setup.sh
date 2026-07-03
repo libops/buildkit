@@ -51,6 +51,10 @@ function check_wordpress_installed {
     wp_cli core is-installed >/dev/null 2>&1
 }
 
+function wordpress_home {
+    php -r 'require "/var/www/bedrock/config/libops-runtime.php"; echo WP_HOME;'
+}
+
 function install_wordpress {
     if check_wordpress_installed; then
         echo "WordPress is already installed."
@@ -59,7 +63,7 @@ function install_wordpress {
 
     echo "WordPress not installed. Running wp-cli installation..."
     wp_cli core install \
-        --url="${WORDPRESS_HOME}" \
+        --url="$(wordpress_home)" \
         --title="${WORDPRESS_SITE_TITLE}" \
         --admin_user="${WORDPRESS_ADMIN_USERNAME}" \
         --admin_password="${WORDPRESS_ADMIN_PASSWORD}" \

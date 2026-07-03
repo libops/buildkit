@@ -7,7 +7,6 @@ services:
       ASPACE_DB_MIGRATE: "true"
       DB_ROOT_PASSWORD: root
       DB_PASSWORD: password
-      APPCONFIG_DB_URL: jdbc:mysql://mariadb:3306/archivesspace?useUnicode=true&characterEncoding=UTF-8&user=archivesspace&password=password&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       APPCONFIG_SOLR_URL: http://solr:8983/solr/archivesspace
     depends_on:
       mariadb:

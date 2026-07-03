@@ -13,7 +13,7 @@ location ~ \.php$ {
     fastcgi_pass unix:{{ getenv "PHP_FPM_SOCKET" }};
     fastcgi_index index.php;
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-    {{ if eq (getenv "OMEKA_S_ENABLE_HTTPS") "true" }}
+    {{ if eq (getenv "INGRESS_SCHEME") "https" }}
     fastcgi_param HTTPS on;
     fastcgi_param HTTP_SCHEME https;
     {{ end }}

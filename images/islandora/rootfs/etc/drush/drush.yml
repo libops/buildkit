@@ -1,4 +1,0 @@
-drush:
-  paths:
-    include:
-      - '/usr/share/drush/'

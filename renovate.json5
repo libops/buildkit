@@ -188,6 +188,15 @@
         ],
       },
     },
+    {
+      matchDepTypes: [
+        'action',
+      ],
+      matchPackageNames: [
+        'libops/.github',
+      ],
+      pinDigests: false,
+    },
   ],
   customManagers: [
     {

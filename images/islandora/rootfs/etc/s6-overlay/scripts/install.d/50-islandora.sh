@@ -2,13 +2,24 @@
 # shellcheck shell=bash
 set -euo pipefail
 
-# shellcheck disable=SC1091
-source /etc/islandora/utilities.sh
-
 readonly SITE="default"
 
+function ingress_primary_hostname {
+    local hostnames hostname
+    hostnames="${INGRESS_HOSTNAMES:-localhost}"
+    hostname="${hostnames%%,*}"
+    hostname="${hostname//[[:space:]]/}"
+    echo "${hostname:-localhost}"
+}
+
+function ingress_base_url {
+    local scheme
+    scheme="${INGRESS_SCHEME:-http}"
+    echo "${scheme:-http}://$(ingress_primary_hostname)"
+}
+
 function drush_uri {
-    echo "${DRUSH_OPTIONS_URI:-${DRUPAL_DEFAULT_SITE_URL:-http://localhost}}"
+    ingress_base_url
 }
 
 function rebuild_drupal_cache {

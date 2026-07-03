@@ -4,49 +4,23 @@ set -euo pipefail
 
 data_dir="${APPCONFIG_DATA_DIR:-/archivesspace/data}"
 mkdir -p "${data_dir}/tmp"
-chown -R archivesspace:archivesspace "${data_dir}"
-
-function read_secret {
-  local name="$1"
-  local default="${2:-}"
-  local file_var="${name}_FILE"
-  local secret_file="${!file_var:-/run/secrets/${name}}"
-
-  if [ -f "${secret_file}" ]; then
-    tr -d '\r\n' <"${secret_file}"
-    return
-  fi
-  if [ -n "${!name:-}" ]; then
-    printf '%s' "${!name}"
-    return
-  fi
-  printf '%s' "${default}"
-}
-
-function database_password {
-  if [ -n "${ARCHIVESSPACE_DB_PASSWORD:-}" ] || [ -f "${ARCHIVESSPACE_DB_PASSWORD_FILE:-/run/secrets/ARCHIVESSPACE_DB_PASSWORD}" ]; then
-    read_secret ARCHIVESSPACE_DB_PASSWORD changeme
-    return
-  fi
-  read_secret DB_PASSWORD changeme
-}
+chown -R archivesspace:archivesspace "${data_dir}" /archivesspace/config
 
 function root_password {
-  read_secret DB_ROOT_PASSWORD
+  printf '%s' "${DB_ROOT_PASSWORD:-}"
 }
 
 function create_archivesspace_database {
-  local app_password root_password_value
-  app_password="$(database_password)"
+  local root_password_value
   root_password_value="$(root_password)"
-  cat <<-SQL | DB_ROOT_PASSWORD="${root_password_value}" DB_PASSWORD="${app_password}" create-database.sh
+  cat <<-SQL | DB_ROOT_PASSWORD="${root_password_value}" create-database.sh
 CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${app_password}';
+CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
 GRANT ALL PRIVILEGES ON ${DB_NAME}.* to '${DB_USER}'@'%';
 FLUSH PRIVILEGES;
 
-SET PASSWORD FOR '${DB_USER}'@'%' = PASSWORD('${app_password}');
+SET PASSWORD FOR '${DB_USER}'@'%' = PASSWORD('${DB_PASSWORD}');
 SQL
 }
 

@@ -60,7 +60,6 @@ jobs:
       sitectl_omeka_classic_image_tags: ${{ steps.plan.outputs.sitectl_omeka_classic_image_tags }}
       sitectl_ojs_image_tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}
       sitectl_drupal_image_tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}
-      sitectl_isle_template_image_tags: ${{ steps.plan.outputs.sitectl_isle_template_image_tags }}
       sitectl_isle_libops_image_tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}
       sitectl_isle_images: ${{ steps.plan.outputs.sitectl_isle_images }}
     steps:
@@ -116,7 +115,6 @@ jobs:
             echo "sitectl_omeka_classic_image_tags=omeka-classic=$(first_tag omeka-classic-php84)"
             echo "sitectl_ojs_image_tags=ojs=$(first_tag ojs-php84)"
             echo "sitectl_drupal_image_tags=drupal=$(first_tag drupal-php84)"
-            echo "sitectl_isle_template_image_tags=drupal=$(first_tag drupal-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
             echo "sitectl_isle_libops_image_tags=drupal=$(first_tag islandora-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
             echo "sitectl_isle_images="
           } >> "$GITHUB_OUTPUT"
@@ -135,7 +133,6 @@ jobs:
           echo "sitectl omeka-classic image tags: ${{ steps.plan.outputs.sitectl_omeka_classic_image_tags }}"
           echo "sitectl ojs image tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}"
           echo "sitectl drupal image tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}"
-          echo "sitectl isle template image tags: ${{ steps.plan.outputs.sitectl_isle_template_image_tags }}"
           echo "sitectl isle libops image tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}"
 
   build-level-0:
@@ -355,18 +352,6 @@ jobs:
             create-args: ""
             image-tags: ${{ needs.plan.outputs.sitectl_drupal_image_tags }}
             images: ""
-          - plugin: isle
-            packages: sitectl sitectl-isle sitectl-drupal
-            create-args: >-
-              --template-repo https://github.com/Islandora-Devops/isle-site-template
-              --fcrepo off
-              --blazegraph off
-              --isle-file-system-uri private
-              --iiif triplet
-              --iiif-topology disabled
-              --bot-mitigation off
-            image-tags: ${{ needs.plan.outputs.sitectl_isle_template_image_tags }}
-            images: ${{ needs.plan.outputs.sitectl_isle_images }}
           - plugin: isle
             packages: sitectl sitectl-isle sitectl-drupal
             create-args: >-

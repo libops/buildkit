@@ -1,3 +1,4 @@
+{{- define "doubleQuoteEscape" -}}{{- $escaped := replace . "\\" "\\\\" -1 -}}{{- replace $escaped "\"" "\\\"" -1 -}}{{- end -}}
 ; <?php exit; // DO NOT DELETE?>
 ; DO NOT DELETE THE ABOVE LINE!!!
 ; Doing so will expose this configuration file through your web site!
@@ -26,14 +27,16 @@
 
 ; An application-specific key that is required for the app to run
 ; Internally this is used for any encryption (specifically cookie encryption if enabled)
-app_key = {{ getenv "OJS_SECRET_KEY" }}
+app_key = "{{ template "doubleQuoteEscape" (getenv "OJS_SECRET_KEY") }}"
 
 ; Set this to On once the system has been installed
 ; (This is generally done automatically by the installer)
 installed = Off
 
 ; The canonical URL to the OJS installation (excluding the trailing slash)
-base_url = "{{ getenv "OJS_BASE_URL" }}"
+{{ $base_url_ingress_hostnames := replace (getenv "INGRESS_HOSTNAMES") " " "" -1 }}
+{{ $base_url_primary_hostname := index (split $base_url_ingress_hostnames ",") 0 -}}
+base_url = "{{ if ne (getenv "INGRESS_SCHEME") "" }}{{ getenv "INGRESS_SCHEME" }}{{ else }}http{{ end }}://{{ if ne $base_url_primary_hostname "" }}{{ $base_url_primary_hostname }}{{ else }}localhost{{ end }}"
 
 ; Enable strict mode. This will more aggressively cause errors/warnings when
 ; deprecated behaviour exists in the codebase.
@@ -96,14 +99,8 @@ restful_urls = On
 ; An empty string indicates that all hosts should be trusted (not recommended!)
 ; Example:
 ; allowed_hosts = '["myjournal.tld", "anotherjournal.tld", "mylibrary.tld"]'
-{{- $url := getenv "OJS_BASE_URL" -}}
-
-{{- $temp    := replace $url  "https://" "" -1 -}}
-{{- $cleaned := replace $temp "http://"  "" -1 -}}
-
-{{- $host  := index (split $cleaned "/") 0 -}}
-{{ $domain := index (split $host    ":") 0 }}
-allowed_hosts = '["localhost", "{{ $domain }}"]'
+{{ $ingress_hostnames := replace (getenv "INGRESS_HOSTNAMES") " " "" -1 -}}
+allowed_hosts = '["localhost"{{ range $hostname := split $ingress_hostnames "," }}{{ if ne $hostname "" }}, "{{ $hostname }}"{{ end }}{{ end }}]'
 
 
 ; Allow the X_FORWARDED_FOR header to override the REMOTE_ADDR as the source IP
@@ -147,11 +144,15 @@ sandbox = Off
 [database]
 
 driver = mysqli
-host = {{ getenv "DB_HOST" }}
-username = {{ getenv "DB_USER" }}
-password = {{ getenv "DB_PASSWORD" }}
-name = {{ getenv "DB_NAME" }}
-port = {{ getenv "DB_PORT" }}
+{{ $dbHost := getenv "DB_HOST" }}
+{{ $dbUser := getenv "DB_USER" }}
+{{ $dbPassword := getenv "DB_PASSWORD" }}
+{{ $dbName := getenv "DB_NAME" }}
+host = "{{ template "doubleQuoteEscape" $dbHost }}"
+username = "{{ template "doubleQuoteEscape" $dbUser }}"
+password = "{{ template "doubleQuoteEscape" $dbPassword }}"
+name = "{{ template "doubleQuoteEscape" $dbName }}"
+port = "{{ getenv "DB_PORT" }}"
 
 ; Set the non-standard port and/or socket, if used
 ; unix_socket = /var/run/mysqld/mysqld.sock
