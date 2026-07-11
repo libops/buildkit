@@ -8,6 +8,7 @@ ARG FCREPO_FILE=fcrepo-webapp-${SOFTWARE_VERSION}.war
 ARG FCREPO_URL=https://github.com/fcrepo/fcrepo/releases/download/fcrepo-${SOFTWARE_VERSION}/${FCREPO_FILE}
 ARG FCREPO_SHA256="5091550fe31e7693f36396e0ea3231c990648f14d914597124b84971a9daaae5"
 
+# renovate: datasource=github-releases depName=islandora-syn-fcrepo6 packageName=Islandora/Syn
 ARG SYN_VERSION=1.1.1
 ARG SYN_FILE=islandora-syn-${SYN_VERSION}-all.jar
 ARG SYN_URL=https://github.com/islandora/Syn/releases/download/v${SYN_VERSION}/${SYN_FILE}
@@ -51,7 +52,7 @@ RUN --mount=type=cache,id=fcrepo6-downloads-${TARGETARCH},sharing=locked,target=
 
 ENV \
     DB_NAME=fcrepo \
-    DB_PASSWORD=password \
+    DB_PASSWORD= \
     DB_USER=fcrepo \
     FCREPO_ACTIVEMQ_BROKER=tcp://activemq:61616 \
     FCREPO_ACTIVEMQ_QUEUE=fedora \
@@ -64,4 +65,4 @@ COPY --link rootfs /
 
 RUN chown -R tomcat:tomcat /opt/tomcat
 
-HEALTHCHECK CMD curl -s http://localhost:8080/fcrepo/rest/fcr:systeminfo | jq -e .version
+HEALTHCHECK CMD curl -fsS http://localhost:8080/fcrepo/rest/fcr:systeminfo | jq -e .version

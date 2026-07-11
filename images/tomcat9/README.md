@@ -6,13 +6,19 @@ Built from [libops/isle-buildkit tomcat](https://github.com/libops/buildkit/tree
 
 Please refer to the [Tomcat Documentation] for more in-depth information.
 
-As a quick example this will bring up an instance of [Tomcat], and allow you
-to view the manager webapp on <http://localhost:80/manager/html/>.
+As a quick example this will bring up an instance of [Tomcat] and allow you to
+view the manager webapp on <http://localhost:8080/manager/html/> as `admin`
+using a generated password. The port is bound to the host loopback interface;
+the manager valve is relaxed only for this local example because Docker bridge
+traffic does not arrive from the container's loopback address.
 
 ```bash
+export TOMCAT_ADMIN_PASSWORD="$(openssl rand -hex 32)"
 docker run --rm -ti \
-    -p 8080:8080 \
-    libops/tomcat
+    --env TOMCAT_ADMIN_PASSWORD \
+    --env TOMCAT_MANAGER_REMOTE_ADDRESS_VALVE='.*' \
+    -p 127.0.0.1:8080:8080 \
+    libops/tomcat:9
 ```
 
 ## Dependencies
@@ -35,12 +41,12 @@ additional settings, volumes, ports, etc.
 | Environment Variable                | Default     | Description                                                                           |
 | :---------------------------------- | :---------- | :------------------------------------------------------------------------------------ |
 | TOMCAT_ADMIN_NAME                   | admin       | The user name of the manager webapp admin user                                        |
-| TOMCAT_ADMIN_PASSWORD               | password    | The password for the manager webapp admin user                                        |
+| TOMCAT_ADMIN_PASSWORD               |             | The password for the manager webapp admin user; an empty value disables the admin user|
 | TOMCAT_ADMIN_ROLES                  | manager-gui | Comma separated list of roles the user has                                            |
 | TOMCAT_CATALINA_OPTS                |             |                                                                                       |
 | TOMCAT_JAVA_OPTS                    |             |                                                                                       |
 | TOMCAT_LOG_LEVEL                    | INFO        | Log level. Possible Values: SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL |
-| TOMCAT_MANAGER_REMOTE_ADDRESS_VALVE | ^.*$        | Allows / blocks access to manager app to addresses which match this regex             |
+| TOMCAT_MANAGER_REMOTE_ADDRESS_VALVE | `^(127[.].*\|::1)$` | Allows / blocks access to manager app to addresses which match this regex |
 
 Additional users/groups/etc can be defined by adding more environment variables,
 following the above conventions:

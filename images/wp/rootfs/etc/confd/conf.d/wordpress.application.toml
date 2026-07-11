@@ -2,6 +2,6 @@
 src = "wordpress.application.php.tmpl"
 dest = "/var/www/bedrock/config/libops-runtime.php"
 uid = 0
-gid = 0
-mode = "0644"
+gid = 101
+mode = "0640"
 keys = [ "/" ]

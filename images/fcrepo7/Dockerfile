@@ -2,12 +2,13 @@ FROM java21 AS syn-builder
 
 ARG TARGETARCH
 
-ARG SYN_VERSION=fix-tomcat11-release-2x
-ARG SYN_REF=refs/heads/${SYN_VERSION}
+# renovate: datasource=github-releases depName=islandora-syn-fcrepo7 packageName=Islandora/Syn
+ARG SYN_VERSION=2.0.1
+ARG SYN_REF=refs/tags/v${SYN_VERSION}
 ARG SYN_REPOSITORY=https://github.com/Islandora/Syn.git
 ARG SYN_FILE=islandora-syn-${SYN_VERSION}-all.jar
 ARG SYN_RELEASE_URL=https://github.com/Islandora/Syn/releases/download/v${SYN_VERSION}/${SYN_FILE}
-ARG SYN_SHA256=2ee12833f46aab8980e872a255612865323bf22165f86b8f5208018c1775afa5
+ARG SYN_SHA256=dde30978ca103a78d88f98ee0d2e95b767566377b29b3e8b680831fef8662bd8
 
 WORKDIR /build/syn
 
@@ -72,7 +73,7 @@ RUN --mount=type=cache,id=fcrepo7-downloads-${TARGETARCH},sharing=locked,target=
 
 ENV \
     DB_NAME=fcrepo \
-    DB_PASSWORD=password \
+    DB_PASSWORD= \
     DB_USER=fcrepo \
     FCREPO_ACTIVEMQ_BROKER=tcp://activemq:61616 \
     FCREPO_ACTIVEMQ_QUEUE=fedora \
@@ -87,4 +88,4 @@ COPY --link rootfs /
 
 RUN chown -R tomcat:tomcat /opt/tomcat
 
-HEALTHCHECK CMD curl -s http://localhost:8080/fcrepo/rest/fcr:systeminfo | jq -e .version
+HEALTHCHECK CMD curl -fsS http://localhost:8080/fcrepo/rest/fcr:systeminfo | jq -e .version

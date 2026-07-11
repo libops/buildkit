@@ -10,9 +10,20 @@ services:
   activemq:
     <<: *common
     image: ${ACTIVEMQ:-libops/activemq:local}
+    environment:
+      ACTIVEMQ_PASSWORD: test-broker-password
+      ACTIVEMQ_WEB_ADMIN_PASSWORD: test-web-password
   mariadb:
     image: ${MARIADB11:-libops/mariadb:local-11}
+    environment:
+      DB_ROOT_PASSWORD: root
+      DB_NAME: fcrepo
+      DB_USER: fcrepo
+      DB_PASSWORD: test-database-password
   fcrepo:
+    environment:
+      DB_PASSWORD: test-database-password
+      JWT_ADMIN_TOKEN: islandora
     volumes:
       - ./test.sh:/test.sh # Test to run.
     command:

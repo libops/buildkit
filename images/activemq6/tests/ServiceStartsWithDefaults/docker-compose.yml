@@ -11,6 +11,9 @@ services:
   activemq:
     <<: *common
     image: ${ACTIVEMQ:-libops/activemq:local}
+    environment:
+      ACTIVEMQ_PASSWORD: test-broker-password
+      ACTIVEMQ_WEB_ADMIN_PASSWORD: test-web-password
     volumes:
       - ./test.sh:/test.sh # Test to run.
     command:

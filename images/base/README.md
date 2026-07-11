@@ -69,7 +69,7 @@ duplication.
 
 | Environment Variable | Default                                       | Description                                                                                                  |
 | :------------------- | :-------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
-| JWT_ADMIN_TOKEN      | islandora                                     | Used for [bearer authentication] (Only use with HTTPS or over private networks)                              |
+| JWT_ADMIN_TOKEN      |                                               | Used for [bearer authentication]; supply a secret for services that enable Syn                               |
 | JWT_PRIVATE_KEY      | @see base/rootfs/etc/defaults/JWT_PRIVATE_KEY | Private key for JWT authentication, RSA PEM Format is expected (should only be used in the Drupal container) |
 | JWT_PUBLIC_KEY       | @see base/rootfs/etc/defaults/JWT_PUBLIC_KEY  | Public key for JWT authentication                                                                            |
 
@@ -91,15 +91,16 @@ add `jwt` as a secondary group to your service user.
 
 Database settings target MariaDB.
 
-| Environment Variable | Default    | Description                                                                                     |
-| :------------------- | :--------- | :---------------------------------------------------------------------------------------------- |
-| DB_HOST              | mariadb    | The database host to use                                                                        |
-| DB_NAME              | default    | The name of the default database if no other is specified                                       |
-| DB_PASSWORD          | password   | The password of the user used by the service (e.g. Drupal) to connect to the database           |
-| DB_PORT              | 3306       | The database port to use                                                                        |
-| DB_ROOT_PASSWORD     | password   | The root user password                                                                          |
-| DB_ROOT_USER         | root       | The root user, which is used only on startup to create database / user in the chosen backend    |
-| DB_USER              | default    | The user used by the service (e.g. Drupal) to connect to the database                           |
+| Environment Variable  | Default | Description                                                                                                  |
+| :-------------------- | :------ | :----------------------------------------------------------------------------------------------------------- |
+| DB_BOOTSTRAP_ENABLED  | false   | Explicitly allow an application setup service to create its database and user with root credentials         |
+| DB_HOST               | mariadb | The database host to use                                                                                     |
+| DB_NAME               | default | The name of the default database if no other is specified                                                    |
+| DB_PASSWORD           |          | The password of the scoped user used by the service; required by database-backed applications              |
+| DB_PORT               | 3306    | The database port to use                                                                                     |
+| DB_ROOT_PASSWORD      |         | The root password; required only when `DB_BOOTSTRAP_ENABLED=true` and preferably supplied as a file secret  |
+| DB_ROOT_USER          | root    | The root user, used only by an explicitly enabled database bootstrap                                        |
+| DB_USER               | default | The user used by the service (e.g. Drupal) to connect to the database                                        |
 
 ### Development Settings
 

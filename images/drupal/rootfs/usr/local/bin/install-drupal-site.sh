@@ -14,8 +14,7 @@ function usage {
     OPTIONS:
        --host             The database host.
        --port             The database port.
-       --db-user             The user to connect as.
-       --db-password         The password to use for the user.
+       --db-user          The user to connect as.
        --db-name          The name of the database to install into.
 
        -h --help          Show this help.
@@ -23,90 +22,84 @@ function usage {
 
     Examples:
        Install default Drupal site:
-       $PROGNAME \\
+       LIBOPS_DRUPAL_INSTALL_DB_PASSWORD=password $PROGNAME \\
                 --host "mariadb" \\
                 --port "3306" \\
                 --db-user "root" \\
-                --db-password "password" \\
                 --db-name "drupal_default" \\
                 standard --sites-subdir=default --site-name=Islandora
 EOF
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --host) args="${args}-b " ;;
-        --port) args="${args}-c " ;;
-        --db-user) args="${args}-d " ;;
-        --db-password) args="${args}-e " ;;
-        --db-name) args="${args}-f " ;;
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    HOST=
+    PORT=
+    DB_USER=
+    DB_PASSWORD=${LIBOPS_DRUPAL_INSTALL_DB_PASSWORD:-}
+    DB_NAME=
+    DRUSH_ARGS=()
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "b:c:d:e:f:hx" OPTION; do
-        case $OPTION in
-        b)
-            readonly HOST=${OPTARG}
+    while (($# > 0)); do
+        case "$1" in
+        -b|--host|-c|--port|-d|--db-user|-f|--db-name)
+            if (($# < 2)); then
+                echo "Option $1 requires a value" >&2
+                exit 1
+            fi
+            case "$1" in
+                -b|--host) HOST=$2 ;;
+                -c|--port) PORT=$2 ;;
+                -d|--db-user) DB_USER=$2 ;;
+                -f|--db-name) DB_NAME=$2 ;;
+            esac
+            shift 2
             ;;
-        c)
-            readonly PORT=${OPTARG}
-            ;;
-        d)
-            readonly DB_USER=${OPTARG}
-            ;;
-        e)
-            readonly DB_PASSWORD=${OPTARG}
-            ;;
-        f)
-            readonly DB_NAME=${OPTARG}
-            ;;
-        h)
+        --host=*) HOST=${1#*=}; shift ;;
+        --port=*) PORT=${1#*=}; shift ;;
+        --db-user=*) DB_USER=${1#*=}; shift ;;
+        --db-name=*) DB_NAME=${1#*=}; shift ;;
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            DRUSH_ARGS+=("$@")
+            break
+            ;;
+        -*)
+            # The first unrecognized option and all following arguments belong
+            # to drush, allowing its own option syntax to pass through intact.
+            DRUSH_ARGS+=("$@")
+            break
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
-            exit 1
+            DRUSH_ARGS+=("$1")
+            shift
             ;;
         esac
     done
 
     if [[ -z $HOST || -z $PORT || -z $DB_USER || -z $DB_PASSWORD || -z $DB_NAME ]]; then
-        echo "Missing one of required options: --host --port --db-user --db-password --db-name"
+        echo "Missing one of required settings: --host --port --db-user --db-name LIBOPS_DRUPAL_INSTALL_DB_PASSWORD"
         exit 1
     fi
 
-    # All remaning parameters are passed to 'drush site-install'.
-    shift $((OPTIND - 1))
-    readonly DRUSH_ARGS=("$@")
+    readonly HOST PORT DB_USER DB_PASSWORD DB_NAME DRUSH_ARGS
 
     return 0
 }
 
 function execute_sql_file {
-    execute-sql-file.sh \
+    LIBOPS_DATABASE_PASSWORD="${DB_PASSWORD}" execute-sql-file.sh \
         --host "${HOST}" \
         --port "${PORT}" \
         --user "${DB_USER}" \
-        --password "${DB_PASSWORD}" \
+        --database "${DB_NAME}" \
         "${@}"
 }
 
@@ -114,12 +107,25 @@ function mysql_count_query {
     cat <<-EOF
 SELECT COUNT(DISTINCT table_name)
 FROM information_schema.columns
-WHERE table_schema = '${DB_NAME}';
+WHERE table_schema = DATABASE();
 EOF
 }
 
 function mysql_count {
     execute_sql_file <(mysql_count_query) -- -N 2>/dev/null
+}
+
+function uri_encode {
+    LIBOPS_DRUPAL_URI_COMPONENT="$1" php -r 'echo rawurlencode((string) getenv("LIBOPS_DRUPAL_URI_COMPONENT"));'
+}
+
+function database_url {
+    local encoded_name encoded_password encoded_user
+    encoded_user=$(uri_encode "${DB_USER}")
+    encoded_password=$(uri_encode "${DB_PASSWORD}")
+    encoded_name=$(uri_encode "${DB_NAME}")
+    printf 'mysql://%s:%s@%s:%s/%s' \
+        "${encoded_user}" "${encoded_password}" "${HOST}" "${PORT}" "${encoded_name}"
 }
 
 # Check the number of tables to determine if it has already been installed.
@@ -130,15 +136,18 @@ function installed {
 }
 
 function main {
+    local drush_database_url
     cmdline "${ARGS[@]}"
     if installed; then
         echo "Site already is installed."
         return 0
     fi
     echo "Installing site."
-    drush \
+    drush_database_url=$(database_url)
+    DRUSH_COMMAND_SITE_INSTALL_OPTIONS_ACCOUNT_PASS="${LIBOPS_DRUPAL_INSTALL_ACCOUNT_PASSWORD:-}" \
+        DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL="${drush_database_url}" \
+        drush \
         -n \
-        si "${DRUSH_ARGS[@]}" \
-        --db-url="mysql://${DB_USER}:${DB_PASSWORD}@${HOST}:${PORT}/${DB_NAME}"
+        si "${DRUSH_ARGS[@]}"
 }
 main

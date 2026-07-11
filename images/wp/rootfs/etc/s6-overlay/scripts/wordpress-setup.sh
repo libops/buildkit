@@ -3,16 +3,15 @@
 
 set -eou pipefail
 
+# shellcheck disable=SC1091
+source /usr/local/share/libops/database.sh
+# shellcheck disable=SC1091
+source /usr/local/share/libops/environment.sh
+
 function mysql_create_database {
-    cat <<-SQL | create-database.sh
-CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* to '${DB_USER}'@'%';
-FLUSH PRIVILEGES;
-
-SET PASSWORD FOR ${DB_USER}@'%' = PASSWORD('${DB_PASSWORD}');
-SQL
+    DB_CHARACTER_SET=utf8mb4 \
+        DB_COLLATION=utf8mb4_unicode_ci \
+        render-database-bootstrap-sql.sh | create-database.sh
 }
 
 function wp_cli {
@@ -37,7 +36,13 @@ function should_skip_wordpress_setup {
 
 function wait_for_database {
     local attempts=0
-    until mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASSWORD}" "${DB_NAME}" -e 'SELECT 1' >/dev/null 2>&1; do
+    until database_mariadb_with_password "${DB_PASSWORD}" \
+        --host="${DB_HOST}" \
+        --port="${DB_PORT}" \
+        --user="${DB_USER}" \
+        --database="${DB_NAME}" \
+        --execute='SELECT 1' \
+        >/dev/null 2>&1; do
         attempts=$((attempts + 1))
         if [ "$attempts" -ge 60 ]; then
             echo "Database was not ready in time"
@@ -61,13 +66,15 @@ function install_wordpress {
         return 0
     fi
 
+    require_environment_variables WORDPRESS_ADMIN_PASSWORD
+
     echo "WordPress not installed. Running wp-cli installation..."
-    wp_cli core install \
+    printf '%s\n' "${WORDPRESS_ADMIN_PASSWORD}" | wp_cli core install \
         --url="$(wordpress_home)" \
         --title="${WORDPRESS_SITE_TITLE}" \
         --admin_user="${WORDPRESS_ADMIN_USERNAME}" \
-        --admin_password="${WORDPRESS_ADMIN_PASSWORD}" \
         --admin_email="${WORDPRESS_ADMIN_EMAIL}" \
+        --prompt=admin_password \
         --skip-email
 
     wp_cli option update permalink_structure '/%postname%/'
@@ -96,9 +103,16 @@ function main {
         return 0
     fi
 
+    require_environment_variables \
+        DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD \
+        WORDPRESS_AUTH_KEY WORDPRESS_SECURE_AUTH_KEY \
+        WORDPRESS_LOGGED_IN_KEY WORDPRESS_NONCE_KEY \
+        WORDPRESS_AUTH_SALT WORDPRESS_SECURE_AUTH_SALT \
+        WORDPRESS_LOGGED_IN_SALT WORDPRESS_NONCE_SALT
+
     wait_for_wordpress_files
     if [ "${DB_HOST}" = "mariadb" ]; then
-        mysql_create_database
+        database_bootstrap_if_enabled mysql_create_database
     fi
     wait_for_database
     install_wordpress

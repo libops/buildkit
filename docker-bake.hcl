@@ -97,8 +97,8 @@ LOCAL_TAG_SUFFIXES = {
   "activemq5" = "5"
   "activemq6" = "6"
   "alpaca" = ""
-  "archivesspace" = "4.2.0"
-  "archivesspace-solr" = "4.2.0"
+  "archivesspace" = ""
+  "archivesspace-solr" = ""
   "base" = ""
   "blazegraph" = ""
   "crayfits" = ""
@@ -248,14 +248,19 @@ function "tags" {
   result = equal("", suffix) ? [for tag in split(" ", TAGS): "${REPOSITORY}/${PUBLISHED_IMAGES[image]}:${tagName(image, tag)}"] : [for tag in split(" ", TAGS): "${REPOSITORY}/${PUBLISHED_IMAGES[image]}:${tagName(image, tag)}-${suffix}"]
 }
 
+function "normalizeTag" {
+  params = [value]
+  result = trim(regex_replace(value, "[^A-Za-z0-9_.-]+", "-"), "-")
+}
+
 function "cacheFrom" {
   params = [image, arch]
-  result = equal("", arch) ? [] : ["type=registry,ref=${CACHE_FROM_REPOSITORY}/cache:${image}-main-${arch}", notequal("", BRANCH) ? "type=registry,ref=${CACHE_FROM_REPOSITORY}/cache:${image}-${BRANCH}-${arch}" : ""]
+  result = equal("", arch) ? [] : ["type=registry,ref=${CACHE_FROM_REPOSITORY}/cache:${image}-main-${arch}", notequal("", normalizeTag(BRANCH)) ? "type=registry,ref=${CACHE_FROM_REPOSITORY}/cache:${image}-${normalizeTag(BRANCH)}-${arch}" : ""]
 }
 
 function "cacheTo" {
   params = [image, arch]
-  result = [notequal("", BRANCH) ? "type=registry,oci-mediatypes=true,mode=max,compression=estargz,compression-level=5,ref=${CACHE_TO_REPOSITORY}/cache:${image}-${BRANCH}-${arch}" : ""]
+  result = [notequal("", normalizeTag(BRANCH)) ? "type=registry,oci-mediatypes=true,mode=max,compression=estargz,compression-level=5,ref=${CACHE_TO_REPOSITORY}/cache:${image}-${normalizeTag(BRANCH)}-${arch}" : ""]
 }
 
 function "context" {

@@ -34,73 +34,73 @@ EOF
 }
 
 function cmdline {
-    local arg=
-    local args=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --url) args="${args}-u " ;;
-        --sha256) args="${args}-c " ;;
-        --dest) args="${args}-d " ;;
-        --strip) args="${args}-s " ;;
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    URL=
+    CHECKSUM=
+    DEST=
+    STRIP=false
+    REMOVE=()
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "u:c:d:shx" OPTION; do
-        case $OPTION in
-        u)
-            readonly URL=${OPTARG}
+    while (($# > 0)); do
+        case "$1" in
+        -u|--url|-c|--sha256|-d|--dest)
+            if (($# < 2)); then
+                echo "Option $1 requires a value" >&2
+                exit 1
+            fi
+            case "$1" in
+                -u|--url) URL=$2 ;;
+                -c|--sha256) CHECKSUM=$2 ;;
+                -d|--dest) DEST=$2 ;;
+            esac
+            shift 2
             ;;
-        c)
-            readonly CHECKSUM=${OPTARG}
+        --url=*) URL=${1#*=}; shift ;;
+        --sha256=*) CHECKSUM=${1#*=}; shift ;;
+        --dest=*) DEST=${1#*=}; shift ;;
+        -s|--strip)
+            STRIP=true
+            shift
             ;;
-        d)
-            readonly DEST=${OPTARG}
-            ;;
-        s)
-            readonly STRIP=true
-            ;;
-        h)
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            REMOVE+=("$@")
+            break
+            ;;
+        -*)
+            echo "Invalid option: $1" >&2
+            exit 1
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
-            exit 1
+            REMOVE+=("$1")
+            shift
             ;;
         esac
     done
 
-    if [[ -z $URL || -z $CHECKSUM ]]; then
-        echo "Missing one or more required options: --url --sha256"
+    if [[ -z ${URL} || -z ${CHECKSUM} ]]; then
+        echo "Missing one or more required options: --url --sha256" >&2
         exit 1
     fi
 
-    # All remaning parameters are files to be removed from the installation.
-    shift $((OPTIND-1))
-    readonly REMOVE=("$@")
+    readonly URL CHECKSUM DEST STRIP REMOVE
 
     return 0
 }
 
 function validate {
     local file=${1}
-    sha256sum "${file}" | cut -f1 -d' ' | xargs test "${CHECKSUM}" ==
+    local actual
+    actual=$(sha256sum <"${file}")
+    actual=${actual%% *}
+    [[ "${actual}" == "${CHECKSUM}" ]]
 }
 
 function unpack {
@@ -109,7 +109,7 @@ function unpack {
     local args=()
     local filename=
     mkdir -p "${dest}"
-    if [[ -v STRIP ]]; then
+    if [[ "${STRIP}" == "true" ]]; then
         args+=("--strip-components" "1")
     fi
     filename=$(basename "${file}")
@@ -124,15 +124,22 @@ function unpack {
         gunzip "${file}" -f -c > "${dest}/${filename%.*}"
         ;;
     *.zip | *.war)
-        if [[ -v STRIP ]]; then
-            mkdir -p /tmp/unpack
-            unzip "${file}" -d /tmp/unpack
-            local unpack_root
-            unpack_root="$(find /tmp/unpack/ -type d -mindepth 1 -maxdepth 1)"
-            shopt -s dotglob nullglob
-            mv "${unpack_root}"/* "${dest}"
-            shopt -u dotglob nullglob
-            rm -fr /tmp/unpack
+        if [[ "${STRIP}" == "true" ]]; then
+            (
+                local unpack_dir unpack_root
+                local top_level=()
+                unpack_dir=$(mktemp -d -t download-unpack.XXXXXXXXXX)
+                trap 'rm -rf -- "${unpack_dir}"' EXIT HUP INT TERM
+                unzip "${file}" -d "${unpack_dir}"
+                mapfile -d '' top_level < <(find "${unpack_dir}" -mindepth 1 -maxdepth 1 -print0)
+                if ((${#top_level[@]} != 1)) || [[ ! -d "${top_level[0]}" ]]; then
+                    echo "ZIP strip requires exactly one top-level directory: ${file}" >&2
+                    exit 1
+                fi
+                unpack_root=${top_level[0]}
+                shopt -s dotglob nullglob
+                mv "${unpack_root}"/* "${dest}"
+            )
         else
             unzip "${file}" -d "${dest}"
         fi
@@ -163,8 +170,11 @@ function main {
     wget -N -P "${DOWNLOAD_CACHE_DIRECTORY}" "${URL}"
     # Return non-zero if the checksum does not match the downloaded file.
     validate "${file}"
-    if [[ -v DEST ]]; then
+    if [[ -n "${DEST}" ]]; then
         unpack "${file}" "${DEST}"
     fi
 }
-main
+
+if [[ "${DOWNLOAD_LIBRARY_ONLY:-false}" != "true" ]]; then
+    main
+fi

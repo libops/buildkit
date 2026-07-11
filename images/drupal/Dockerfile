@@ -2,6 +2,8 @@
 ARG PHP_BASE=nginx-php83
 FROM ${PHP_BASE}
 
+LABEL org.opencontainers.image.licenses="GPL-2.0-or-later"
+
 ARG PHP_FPM_SOCKET=/run/php-fpm/php-fpm.sock
 
 EXPOSE 80
@@ -28,17 +30,17 @@ ENV \
     DB_PORT=3306 \
     DB_NAME=drupal \
     DB_USER=drupal \
-    DB_PASSWORD=changeme \
+    DB_PASSWORD= \
     DRUPAL_DEFAULT_ACCOUNT_EMAIL=webmaster@localhost.com \
     DRUPAL_DEFAULT_ACCOUNT_NAME=admin \
-    DRUPAL_DEFAULT_ACCOUNT_PASSWORD=password \
+    DRUPAL_DEFAULT_ACCOUNT_PASSWORD= \
     DRUPAL_DEFAULT_CONFIGDIR=/var/www/drupal/config/sync \
     DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG=false \
     DRUPAL_DEFAULT_EMAIL=webmaster@localhost.com \
     DRUPAL_DEFAULT_LOCALE=en \
     DRUPAL_DEFAULT_NAME=Drupal \
     DRUPAL_DEFAULT_PROFILE=standard \
-    DRUPAL_DEFAULT_SALT=9PPaL0CxZAIcq6h5wxgDGlCZrp7JdT_x7v9gVzpdbUjMt1PqDz3uD0Zy-i16DuJ1-Htfshhqeg \
+    DRUPAL_DEFAULT_SALT= \
     DRUPAL_DEFAULT_SOLR_CORE=default \
     DRUPAL_DEFAULT_SOLR_HOST=solr \
     DRUPAL_DEFAULT_SOLR_PORT=8983 \
@@ -78,4 +80,4 @@ COPY --link rootfs /
 
 RUN chown -R nginx:nginx /var/www/drupal
 
-HEALTHCHECK CMD { [ ! -f /var/www/drupal/web/core/lib/Drupal.php ] || [ -f /installed ]; } && curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD { [ ! -f /var/www/drupal/web/core/lib/Drupal.php ] || [ -f /installed ]; } && curl -fsS http://localhost/status | grep -q pool

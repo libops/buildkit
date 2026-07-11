@@ -2,6 +2,8 @@
 ARG PHP_BASE=nginx-php83
 FROM ${PHP_BASE}
 
+LABEL org.opencontainers.image.licenses="GPL-2.0-or-later"
+
 ARG TARGETARCH
 ARG PHP_FPM_SOCKET=/run/php-fpm/php-fpm.sock
 
@@ -28,24 +30,24 @@ ENV \
     DB_PORT=3306 \
     DB_NAME=wordpress \
     DB_USER=wordpress \
-    DB_PASSWORD=changeme \
+    DB_PASSWORD= \
     INGRESS_HOSTNAMES=localhost \
     INGRESS_SCHEME=http \
     WORDPRESS_SITE_TITLE=WordPress \
     WORDPRESS_ADMIN_USERNAME=admin \
     WORDPRESS_ADMIN_EMAIL=admin@example.com \
-    WORDPRESS_ADMIN_PASSWORD=changeme \
+    WORDPRESS_ADMIN_PASSWORD= \
     WORDPRESS_LOCALE=en_US \
     WORDPRESS_TABLE_PREFIX=wp_ \
     WORDPRESS_BLOG_PUBLIC=0 \
-    WORDPRESS_AUTH_KEY=changeme \
-    WORDPRESS_SECURE_AUTH_KEY=changeme \
-    WORDPRESS_LOGGED_IN_KEY=changeme \
-    WORDPRESS_NONCE_KEY=changeme \
-    WORDPRESS_AUTH_SALT=changeme \
-    WORDPRESS_SECURE_AUTH_SALT=changeme \
-    WORDPRESS_LOGGED_IN_SALT=changeme \
-    WORDPRESS_NONCE_SALT=changeme \
+    WORDPRESS_AUTH_KEY= \
+    WORDPRESS_SECURE_AUTH_KEY= \
+    WORDPRESS_LOGGED_IN_KEY= \
+    WORDPRESS_NONCE_KEY= \
+    WORDPRESS_AUTH_SALT= \
+    WORDPRESS_SECURE_AUTH_SALT= \
+    WORDPRESS_LOGGED_IN_SALT= \
+    WORDPRESS_NONCE_SALT= \
     LIBOPS_SMTP_HOST=host.docker.internal \
     LIBOPS_SMTP_PORT=25 \
     SMTP_FROM= \
@@ -78,4 +80,4 @@ ENV \
 
 COPY --link rootfs /
 
-HEALTHCHECK CMD curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD curl -fsS http://localhost/status | grep -q pool

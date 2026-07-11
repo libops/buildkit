@@ -26,50 +26,31 @@ EOF
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    OPTIONS=()
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "hx" OPTION; do
-        case $OPTION in
-        h)
+    while (($# > 0)); do
+        case "$1" in
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            OPTIONS+=("$@")
+            break
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
-            exit 1
+            OPTIONS+=("$1")
+            shift
             ;;
         esac
     done
 
-    shift $((OPTIND - 1))
-
-    # Remaining options to be passed onto the client, preceeded by '--'.
-    if [ "$#" -gt 0 ]; then
-        readonly OPTIONS=("${@}")
-        shift $#
-    else
-        readonly OPTIONS=()
-    fi
+    readonly OPTIONS
 
     return 0
 }

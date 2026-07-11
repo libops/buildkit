@@ -32,7 +32,7 @@ app_key = "{{ template "doubleQuoteEscape" (getenv "OJS_SECRET_KEY") }}"
 
 ; Set this to On once the system has been installed
 ; (This is generally done automatically by the installer)
-installed = Off
+installed = {{ template "booleanOnOff" (getenv "OJS_INSTALLED") }}
 
 ; The canonical URL to the OJS installation (excluding the trailing slash)
 {{ $base_url_ingress_hostnames := replace (getenv "INGRESS_HOSTNAMES") " " "" -1 }}
@@ -279,10 +279,10 @@ session_check_ip = On
 encryption = sha1
 
 ; The unique salt to use for generating password reset hashes
-salt = "{{ getenv "OJS_SALT" }}"
+salt = "{{ template "doubleQuoteEscape" (getenv "OJS_SALT") }}"
 
 ; The unique secret used for encoding and decoding API keys
-api_key_secret = "{{ getenv "OJS_API_KEY_SECRET" }}"
+api_key_secret = "{{ template "doubleQuoteEscape" (getenv "OJS_API_KEY_SECRET") }}"
 
 ; The number of seconds before a password reset hash expires (defaults to 7200 / 2 hours)
 reset_seconds = 7200

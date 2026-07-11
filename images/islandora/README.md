@@ -53,7 +53,7 @@ derivative service and `fcrepo` based containers.
 | :------------------------------ | :---------------------- | :------------------------------------------------- |
 | DRUPAL_DEFAULT_ACCOUNT_EMAIL    | webmaster@localhost.com | The email to use for the admin account             |
 | DRUPAL_DEFAULT_ACCOUNT_NAME     | admin                   | The Drupal administrator user                      |
-| DRUPAL_DEFAULT_ACCOUNT_PASSWORD | password                | The Drupal administrator user password             |
+| DRUPAL_DEFAULT_ACCOUNT_PASSWORD |                         | The Drupal administrator password; required when installing a site |
 | DRUPAL_DEFAULT_EMAIL            | webmaster@localhost.com | The Drupal administrators email                    |
 | DRUPAL_DEFAULT_LOCALE           | en                      | The Drupal sites locale                            |
 | DRUPAL_DEFAULT_NAME             | default                 | The Drupal sites name                              |
@@ -62,7 +62,8 @@ derivative service and `fcrepo` based containers.
 | DRUPAL_DEFAULT_CONFIGDIR        |                         | Install using existing config files from directory |
 | DRUPAL_DEFAULT_INSTALL          | true                    | Perform install if not already installed           |
 
-Provide your own passwords when running in production.
+The image has no administrator password default and fails closed when
+`DRUPAL_DEFAULT_INSTALL=true` without an explicit password.
 
 [base image]: ../base/README.md
 [Drupal]: https://www.drupal.org/

@@ -140,15 +140,16 @@ ENV \
 # environment variables via ENV.
 ENV \
     APP_UID=100 \
+    DB_BOOTSTRAP_ENABLED=false \
     DB_HOST=mariadb \
     DB_NAME=default \
-    DB_PASSWORD=password \
+    DB_PASSWORD= \
     DB_PORT=3306 \
-    DB_ROOT_PASSWORD=password \
+    DB_ROOT_PASSWORD= \
     DB_ROOT_USER=root \
     DB_USER=default \
     DEVELOPMENT_ENVIRONMENT=false \
-    JWT_ADMIN_TOKEN=islandora \
+    JWT_ADMIN_TOKEN= \
     LIBOPS_PROJECT_ID= \
     LIBOPS_SITE_ID= \
     UID= \

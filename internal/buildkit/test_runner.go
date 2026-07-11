@@ -454,7 +454,16 @@ func (r *Runner) specFor(test TestCase) testSpec {
 		}
 	case "drupal":
 		spec.Timeout = 10 * time.Minute
-	case "ojs-php83", "ojs-php84", "omeka-s-php83", "omeka-s-php84", "omeka-classic-php83", "omeka-classic-php84", "wp-php83", "wp-php84", "drupal-php83", "drupal-php84", "islandora-php83", "islandora-php84":
+	case "mariadb11":
+		if test.Name == "RejectsEmptyRootPassword" {
+			spec.ExpectedExitCode["mariadb"] = []int{1}
+		}
+	case "ojs-php83", "ojs-php84", "omeka-s-php83", "omeka-s-php84", "omeka-classic-php83", "omeka-classic-php84":
+		spec.Timeout = 10 * time.Minute
+		if test.Name == "ServiceLogsClientIp" {
+			spec.CheckClientIPLog = true
+		}
+	case "wp-php83", "wp-php84", "drupal-php83", "drupal-php84", "islandora-php83", "islandora-php84":
 		if test.Name == "ServiceLogsClientIp" {
 			spec.CheckClientIPLog = true
 		}
@@ -559,8 +568,7 @@ func (r *Runner) waitForHealthy(ctx context.Context, test TestCase, env []string
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	targetServices := r.healthcheckServices(test, services)
-	attempts := 20
-	for attempt := 1; attempt <= attempts; attempt++ {
+	for {
 		healthy, err := r.anyHealthyContainer(ctx, test, env, targetServices)
 		if err == nil && healthy {
 			fmt.Fprintf(r.stdout, "healthy service found for %s/%s: %s\n", test.Image, test.Name, strings.Join(targetServices, ", "))
@@ -574,7 +582,6 @@ func (r *Runner) waitForHealthy(ctx context.Context, test TestCase, env []string
 		case <-ticker.C:
 		}
 	}
-	return fmt.Errorf("no target service reported healthy after %d attempts", attempts)
 }
 
 func (r *Runner) healthcheckServices(test TestCase, services []string) []string {

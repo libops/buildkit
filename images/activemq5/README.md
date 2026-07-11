@@ -6,16 +6,21 @@ Built from [libops/isle-buildkit activemq](https://github.com/libops/buildkit/tr
 
 Please refer to the [ActiveMQ Documentation] for more in-depth information.
 
-As a quick example this will bring up an instance of ActiveMQ, and allow you to
-log into the [WebConsole] on `http://localhost:8161` as the user `admin` with
-the password `password`.
+As a quick example this will generate separate broker and web-console
+credentials, bring up ActiveMQ, and allow you to log into the [WebConsole] on
+`http://localhost:8161` as `admin` using the value of
+`ACTIVEMQ_WEB_ADMIN_PASSWORD`.
 
 ```bash
-docker run --rm -ti -p 8161:8161 libops/activemq
+export ACTIVEMQ_PASSWORD="$(openssl rand -hex 32)"
+export ACTIVEMQ_WEB_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+docker run --rm -ti -p 8161:8161 \
+  --env ACTIVEMQ_PASSWORD \
+  --env ACTIVEMQ_WEB_ADMIN_PASSWORD \
+  libops/activemq:5
 ```
 
-> N.B. if no credentials are given you will not be able to log in via the
-[WebConsole].
+Both credentials are required; the container fails closed when either is empty.
 
 ## Dependencies
 
@@ -46,10 +51,10 @@ additional settings, volumes, ports, etc.
 | :-------------------------- | :------- | :----------------------------------------------------------------------------- |
 | ACTIVEMQ_AUDIT_LOG_LEVEL    | INFO     | Log level. Possible Values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE or ALL |
 | ACTIVEMQ_LOG_LEVEL          | INFO     | Log level. Possible Values: OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE or ALL |
-| ACTIVEMQ_PASSWORD           | password | See [Security]: credentials.properties                                         |
+| ACTIVEMQ_PASSWORD           |          | See [Security]: credentials.properties; required at startup                    |
 | ACTIVEMQ_USER               | admin    | See [Security]: credentials.properties                                         |
 | ACTIVEMQ_WEB_ADMIN_NAME     | admin    | See [WebConsole]: jetty-realm.properties                                       |
-| ACTIVEMQ_WEB_ADMIN_PASSWORD | password | See [WebConsole]: jetty-realm.properties                                       |
+| ACTIVEMQ_WEB_ADMIN_PASSWORD |          | See [WebConsole]: jetty-realm.properties; required at startup                  |
 | ACTIVEMQ_WEB_ADMIN_ROLES    | admin    | See [WebConsole]: jetty-realm.properties                                       |
 
 Additional users/groups/etc can be defined by adding more environment variables,

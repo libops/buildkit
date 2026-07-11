@@ -2,8 +2,6 @@
 # shellcheck shell=bash
 set -euo pipefail
 
-readonly SITE="default"
-
 function ingress_primary_hostname {
     local hostnames hostname
     hostnames="${INGRESS_HOSTNAMES:-localhost}"

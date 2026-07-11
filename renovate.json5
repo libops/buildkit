@@ -65,6 +65,18 @@
     },
     {
       matchDepNames: [
+        "islandora-syn-fcrepo6",
+      ],
+      allowedVersions: "/^1\\./",
+    },
+    {
+      matchDepNames: [
+        "islandora-syn-fcrepo7",
+      ],
+      allowedVersions: "/^2\\./",
+    },
+    {
+      matchDepNames: [
         "apache-tomcat9",
       ],
       allowedVersions: "/^9\\./",
@@ -85,7 +97,7 @@
       matchDepNames: [
         "omeka-classic",
       ],
-      allowedVersions: "/^\\d+\\.\\d+$/",
+      allowedVersions: "/^\\d+\\.\\d+(?:\\.\\d+)?$/",
     },
     {
       matchDatasources: [
@@ -174,6 +186,8 @@
         "fits-servlet",
         "golang",
         "islandora-starter-site",
+        "islandora-syn-fcrepo6",
+        "islandora-syn-fcrepo7",
         "mysql-connector-j",
         "ojs",
         "omeka-classic",
@@ -199,6 +213,17 @@
     },
   ],
   customManagers: [
+    {
+      customType: "regex",
+      description: "Update the digest-pinned BuildKit daemon image",
+      managerFilePatterns: [
+        "/^\\.github/workflows/build\\.yml$/",
+      ],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>docker) depName=(?<depName>moby/buildkit)\\s+BUILDKIT_IMAGE: moby/buildkit:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})",
+      ],
+      versioningTemplate: "docker",
+    },
     {
       customType: "regex",
       description: "Update (COMMIT|_VERSION) variables in Dockerfiles",

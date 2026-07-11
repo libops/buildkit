@@ -28,58 +28,55 @@ EOF
 }
 
 function cmdline() {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --name) args="${args}-n " ;;
-        --group) args="${args}-g " ;;
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    NAME=
+    GROUP=
+    DIRECTORIES=()
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "n:g:hx" OPTION; do
-        case $OPTION in
-        n)
-            readonly NAME=${OPTARG}
+    while (($# > 0)); do
+        case "$1" in
+        -n|--name|-g|--group)
+            if (($# < 2)); then
+                echo "Option $1 requires a value" >&2
+                exit 1
+            fi
+            case "$1" in
+                -n|--name) NAME=$2 ;;
+                -g|--group) GROUP=$2 ;;
+            esac
+            shift 2
             ;;
-        g)
-            readonly GROUP=${OPTARG}
-            ;;
-        h)
+        --name=*) NAME=${1#*=}; shift ;;
+        --group=*) GROUP=${1#*=}; shift ;;
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            DIRECTORIES+=("$@")
+            break
+            ;;
+        -*)
+            echo "Invalid option: $1" >&2
+            exit 1
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
-            exit 1
+            DIRECTORIES+=("$1")
+            shift
             ;;
         esac
     done
 
-    if [[ ! -v NAME ]]; then
+    if [[ -z ${NAME} ]]; then
         echo "Missing one or more required options: --name" >&2
         exit 1
     fi
 
-    # All remaning parameters are directories to be created.
-    shift $((OPTIND - 1))
-    DIRECTORIES=("$@")
-    readonly DIRECTORIES
+    readonly NAME GROUP DIRECTORIES
 
     return 0
 }
@@ -104,7 +101,7 @@ function main {
         addgroup "${user}" tty
     fi
     # Optional secondary group.
-    if [[ -v GROUP ]]; then
+    if [[ -n "${GROUP}" ]]; then
         if ! id -nG "${user}" | tr ' ' '\n' | grep -qx "${GROUP}"; then
             addgroup "${NAME}" "${GROUP}"
         fi

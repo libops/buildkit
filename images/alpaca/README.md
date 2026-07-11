@@ -1,6 +1,6 @@
 # Alpaca
 
-Docker image for [Alpaca] version 2.2.0.
+Docker image for [Alpaca] version 2.4.0.
 
 Built from [libops/isle-buildkit alpaca](https://github.com/libops/buildkit/tree/main/images/alpaca)
 
@@ -64,7 +64,7 @@ additional settings, volumes, ports, etc.
 | ALPACA_JAVA_OPTS                          |                                                           |                                                                         |
 | ALPACA_JMS_CONNECTIONS                    | 10                                                        |                                                                         |
 | ALPACA_JMS_CONSUMERS                      | 1                                                         |                                                                         |
-| ALPACA_JMS_PASSWORD                       | password                                                  | Password to authenticate with                                           |
+| ALPACA_JMS_PASSWORD                       |                                                           | Password to authenticate with; required at startup                      |
 | ALPACA_JMS_URL                            | tcp://activemq:61616                                      | The url for connecting to the ActiveMQ broker, shared by all components |
 | ALPACA_JMS_USER                           | admin                                                     | User to authenticate as                                                 |
 | ALPACA_MAX_REDELIVERIES                   | 5                                                         | Number of attempts to redeliver if an exception occurs                  |

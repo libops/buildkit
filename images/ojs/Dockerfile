@@ -2,6 +2,8 @@
 ARG PHP_BASE=nginx-php83
 FROM ${PHP_BASE}
 
+LABEL org.opencontainers.image.licenses="GPL-3.0-only"
+
 ARG TARGETARCH
 ARG PHP_FPM_SOCKET=/run/php-fpm/php-fpm.sock
 ARG PHP_PACKAGE=php83
@@ -14,10 +16,18 @@ ARG \
     # renovate: datasource=repology depName=alpine_3_24/npm
     NPM_VERSION=11.12.1-r0 \
     # renovate: datasource=repology depName=alpine_3_24/poppler-utils
-    POPPLER_VERSION=25.12.0-r1
+    POPPLER_VERSION=25.12.0-r1 \
+    # renovate: datasource=custom.ojs depName=ojs
+    SOFTWARE_VERSION=3.5.0-5
+
+ARG FILE=ojs-${SOFTWARE_VERSION}.tar.gz
+ARG URL=https://pkp.sfu.ca/ojs/download/${FILE}
+ARG SHA256="fd59cb1add60ab4e56e40ed843ea43ff84af11f0b64c3940f2e03186ad11445e"
 
 EXPOSE 80
 WORKDIR /var/www/ojs
+
+COPY --link patches /opt/ojs-patches
 
 RUN --mount=type=cache,id=ojs-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
@@ -29,7 +39,33 @@ RUN --mount=type=cache,id=ojs-apk-${TARGETARCH},sharing=locked,target=/var/cache
         "${PHP_PACKAGE}-ftp" \
         "${PHP_PACKAGE}-gettext" \
     && \
+    cleanup.sh
+
+# Fresh OJS installations normally fetch mutable ROR and IP geolocation datasets
+# while creating the database. Defer those network-backed tasks to OJS's scheduler
+# so first boot remains bounded and can run without outbound network access. Verify
+# the pinned release still contains exactly the two expected actions before changing
+# its install descriptor; upgrades use a separate descriptor and are unaffected.
+RUN --mount=type=cache,id=ojs-downloads-${TARGETARCH},sharing=locked,target=/opt/downloads \
+    download.sh \
+        --url "${URL}" \
+        --sha256 "${SHA256}" \
+        --strip \
+        --dest /var/www/ojs \
+    && \
+    test "$(grep -Fc '<code function="downloadIPGeoDB"/>' dbscripts/xml/install.xml)" -eq 1 && \
+    test "$(grep -Fc '<code function="updateRorRegistryDataset"/>' dbscripts/xml/install.xml)" -eq 1 && \
+    patch --forward --strip=1 --input=/opt/ojs-patches/install-cli-database-port.patch && \
+    sed -i \
+        -e '/<code function="downloadIPGeoDB"\/>/d' \
+        -e '/<code function="updateRorRegistryDataset"\/>/d' \
+        dbscripts/xml/install.xml \
+    && \
+    mkdir -p /usr/share/licenses/ojs && \
+    cp docs/COPYING /usr/share/licenses/ojs/COPYING && \
+    rm -rf .github tests docs /opt/ojs-patches && \
     mkdir -p /var/www/files /var/www/ojs/cache /var/www/ojs/public && \
+    touch /var/www/ojs/opcache_stat.php && \
     chown -R nginx:nginx /var/www/ojs /var/www/files && \
     cleanup.sh
 
@@ -38,13 +74,14 @@ ENV \
     DB_PORT=3306 \
     DB_NAME=ojs \
     DB_USER=ojs \
-    DB_PASSWORD=changeme \
-    OJS_SALT=changeme \
-    OJS_API_KEY_SECRET=changeme \
-    OJS_SECRET_KEY=changeme \
+    DB_PASSWORD= \
+    OJS_SALT= \
+    OJS_API_KEY_SECRET= \
+    OJS_SECRET_KEY= \
     OJS_ADMIN_USERNAME=admin \
     OJS_ADMIN_EMAIL=admin@localhost \
-    OJS_ADMIN_PASSWORD=changeme \
+    OJS_ADMIN_PASSWORD= \
+    OJS_INSTALLED=Off \
     OJS_LOCALE=en \
     OJS_TIMEZONE=UTC \
     OJS_FILES_DIR=/var/www/files \
@@ -86,4 +123,4 @@ ENV \
 
 COPY --link rootfs /
 
-HEALTHCHECK CMD curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD test -f /installed && test -f /var/www/ojs/index.php && curl -fsS http://localhost/status | grep -q pool

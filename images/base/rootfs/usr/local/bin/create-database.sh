@@ -51,104 +51,95 @@ function fallback {
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --host) args="${args}-b " ;;
-        --port) args="${args}-c " ;;
-        --user) args="${args}-d " ;;
-        --password) args="${args}-e " ;;
-        --database) args="${args}-f " ;;
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    HOST=
+    PORT=
+    USER=
+    PASSWORD=
+    DATABASE_NAME=
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "b:c:d:e:f:hx" OPTION; do
-        case $OPTION in
-        b)
-            readonly HOST=${OPTARG}
+    while (($# > 0)); do
+        case "$1" in
+        --host|-b|--port|-c|--user|-d|--password|-e|--database|-f)
+            if (($# < 2)); then
+                echo "Option $1 requires a value" >&2
+                exit 1
+            fi
+            case "$1" in
+                --host|-b) HOST=$2 ;;
+                --port|-c) PORT=$2 ;;
+                --user|-d) USER=$2 ;;
+                --password|-e) PASSWORD=$2 ;;
+                --database|-f) DATABASE_NAME=$2 ;;
+            esac
+            shift 2
             ;;
-        c)
-            readonly PORT=${OPTARG}
-            ;;
-        d)
-            readonly USER=${OPTARG}
-            ;;
-        e)
-            readonly PASSWORD=${OPTARG}
-            ;;
-        f)
-            readonly DATABASE_NAME=${OPTARG}
-            ;;
-        h)
+        --host=*) HOST=${1#*=}; shift ;;
+        --port=*) PORT=${1#*=}; shift ;;
+        --user=*) USER=${1#*=}; shift ;;
+        --password=*) PASSWORD=${1#*=}; shift ;;
+        --database=*) DATABASE_NAME=${1#*=}; shift ;;
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
             ;;
-        *)
-            echo "Invalid Option: $OPTION" >&2
+        --) shift; break ;;
+        -*)
+            echo "Invalid option: $1" >&2
             usage
             exit 1
+            ;;
+        *)
+            break
             ;;
         esac
     done
 
     if fallback "--database" "DATABASE_NAME" "DB_NAME"; then
-        readonly DATABASE_NAME=${DB_NAME}
+        DATABASE_NAME=${DB_NAME}
     fi
 
     if fallback "--user" "USER" "DB_ROOT_USER"; then
-        readonly USER=${DB_ROOT_USER}
+        USER=${DB_ROOT_USER}
     fi
 
     if fallback "--password" "PASSWORD" "DB_ROOT_PASSWORD"; then
-        readonly PASSWORD=${DB_ROOT_PASSWORD}
+        PASSWORD=${DB_ROOT_PASSWORD}
     fi
 
     if fallback "--host" "HOST" "DB_HOST"; then
-        readonly HOST=${DB_HOST}
+        HOST=${DB_HOST}
     fi
 
     if fallback "--port" "PORT" "DB_PORT"; then
-        readonly PORT=${DB_PORT}
+        PORT=${DB_PORT}
     fi
-
-    shift $((OPTIND - 1))
 
     # Allow either passing in a file/pipe or reading from stdin by specifiying "-" or
     # ommiting completely.
-    if [[ -f "${1}" || -p "${1}" ]]; then
-        readonly FILE="${1}"
+    if [[ -n "${1:-}" && ( -f "$1" || -p "$1" ) ]]; then
+        FILE=$1
         shift
-    elif [[ "${1}" == "-" ]]; then
-        readonly FILE=/dev/stdin
+    elif [[ "${1:-}" == "-" ]]; then
+        FILE=/dev/stdin
         shift
     else
-        readonly FILE=/dev/stdin
+        FILE=/dev/stdin
     fi
+
+    readonly HOST PORT USER PASSWORD DATABASE_NAME FILE
 
     return 0
 }
 
 function execute_sql_file {
-    execute-sql-file.sh \
+    LIBOPS_DATABASE_PASSWORD="${PASSWORD}" execute-sql-file.sh \
         --host "${HOST}" \
         --port "${PORT}" \
         --user "${USER}" \
-        --password "${PASSWORD}" \
         "${@}"
 }
 

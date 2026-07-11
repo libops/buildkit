@@ -8,6 +8,8 @@ services:
   mariadb:
     <<: *common
     image: ${MARIADB11:-libops/mariadb:local-11}
+    environment:
+      DB_ROOT_PASSWORD: root
     volumes:
       - ./test.sh:/test.sh # Test to run.
     command:

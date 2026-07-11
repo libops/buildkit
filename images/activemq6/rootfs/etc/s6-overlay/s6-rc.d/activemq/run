@@ -1,7 +1,16 @@
-#!/usr/bin/env bash
+#!/command/with-contenv bash
+# shellcheck shell=bash
 set -e
+
+# shellcheck disable=SC1091
+source /usr/local/share/libops/environment.sh
+
+require_environment_variables ACTIVEMQ_USER ACTIVEMQ_PASSWORD \
+    ACTIVEMQ_WEB_ADMIN_NAME ACTIVEMQ_WEB_ADMIN_PASSWORD
 
 # When bind mounting we need to ensure that we
 # actually can write to the folder.
 chown activemq:activemq /opt/activemq/data
+unset ACTIVEMQ_PASSWORD ACTIVEMQ_WEB_ADMIN_PASSWORD
+unset DB_ROOT_PASSWORD
 exec s6-setuidgid activemq /opt/activemq/bin/activemq console

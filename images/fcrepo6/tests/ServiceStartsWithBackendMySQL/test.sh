@@ -5,7 +5,9 @@
 source /usr/local/share/isle/utilities.sh
 
 function count {
-    cat <<-EOF | execute-sql-file.sh --database "fcrepo" - -- -N 2>/dev/null
+    cat <<-EOF | LIBOPS_DATABASE_PASSWORD="${DB_PASSWORD}" execute-sql-file.sh \
+        --host "${DB_HOST}" --port "${DB_PORT}" --user "${DB_USER}" \
+        --database "${DB_NAME}" - -- -N 2>/dev/null
 SELECT COUNT(*) as count FROM containment;
 EOF
 }

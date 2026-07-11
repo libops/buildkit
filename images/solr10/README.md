@@ -64,14 +64,7 @@ Change `SOFTWARE_VERSION` and then generate the `SOLR_FILE_SHA256` with the foll
 commands:
 
 ```bash
-SOFTWARE_VERSION=$(cat solr10/Dockerfile | grep -o 'SOFTWARE_VERSION=.*' | cut -f2 -d=)
-SOLR_FILE=$(cat solr10/Dockerfile | grep -o 'SOLR_FILE=.*' | cut -f2 -d=)
-SOLR_URL=$(cat solr10/Dockerfile | grep -o 'SOLR_URL=.*' | cut -f2 -d=)
-SOLR_FILE=$(eval "echo $SOLR_FILE")
-SOLR_URL=$(eval "echo $SOLR_URL")
-wget --quiet "${SOLR_URL}"
-shasum -a 256 "${SOLR_FILE}" | cut -f1 -d' '
-rm "${SOLR_FILE}"
+./ci/update-sha.sh apache-solr10 OLD_VERSION NEW_VERSION ''
 ```
 
 [Solr Documentation]: https://lucene.apache.org/solr/guide/7_1/

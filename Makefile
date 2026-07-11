@@ -31,9 +31,12 @@ endef
 # Used to include host-platform specific docker compose files.
 OS := $(shell uname -s | tr A-Z a-z)
 
-# Used to determine set TAGS when no explicit value provided,
-# as well as to fetch branch specific remote caches when building.
-BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+# Used to set TAGS when no explicit value is provided and to fetch branch-specific
+# remote caches. Keep it aligned with the metadata helper's Docker-tag fallback
+# normalization so names such as feature/foo produce valid cache references.
+# Pipe the ref directly into the normalizer so branch text is never re-evaluated
+# as part of a generated shell command.
+BRANCH = $(shell git -c safe.directory='$(CURDIR)' rev-parse --abbrev-ref HEAD | sed -E 's/[^A-Za-z0-9_.-]+/-/g; s/^-+//; s/-+$$//')
 
 # The buildkit builder to use.
 BUILDER ?= default
@@ -121,7 +124,7 @@ docker-buildx: | docker
 .SILENT: build/bake.json
 build/bake.json: | docker-buildx jq build folder-permissions executable-permissons
 	set -x; \
-	BRANCH=$(BRANCH) \
+		BRANCH="$(BRANCH)" \
 	CACHE_FROM_REPOSITORY=$(CACHE_FROM_REPOSITORY) \
 	CACHE_TO_REPOSITORY=$(CACHE_TO_REPOSITORY) \
 	REPOSITORY=$(REPOSITORY) \

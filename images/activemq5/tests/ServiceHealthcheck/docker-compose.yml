@@ -8,6 +8,14 @@ services:
   activemq:
     <<: *common
     image: ${ACTIVEMQ:-libops/activemq:local}
+    environment:
+      ACTIVEMQ_PASSWORD: test-broker-password
+      ACTIVEMQ_USER_ESCAPE_NAME: 'broker:user=name'
+      ACTIVEMQ_USER_ESCAPE_PASSWORD: ' broker:p\a=ss:word'
+      ACTIVEMQ_GROUP_ESCAPE_NAME: 'operators:admin=team'
+      ACTIVEMQ_GROUP_ESCAPE_MEMBERS: 'broker:user=name'
+      ACTIVEMQ_WEB_ADMIN_NAME: healthcheck-user
+      ACTIVEMQ_WEB_ADMIN_PASSWORD: 'web:p"a\ss&+=word'
     volumes:
       - ./test.sh:/test.sh # Test to run.
     command:

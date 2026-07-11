@@ -10,7 +10,11 @@
 {{ $appConfigSolrURL := getenv "APPCONFIG_SOLR_URL" }}
 {{ $smtpFrom := getenv "SMTP_FROM" }}
 {{ $smtpHost := getenv "SMTP_HOST" }}
-AppConfig[:db_url] = 'jdbc:mysql://{{ template "sqlEscape" $dbHost }}:{{ template "sqlEscape" $dbPort }}/{{ template "sqlEscape" $dbName }}?useUnicode=true&characterEncoding=UTF-8&user={{ template "sqlEscape" $dbUser }}&password={{ template "sqlEscape" $dbPassword }}&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+require 'uri'
+
+db_user = URI.encode_www_form_component('{{ template "sqlEscape" $dbUser }}')
+db_password = URI.encode_www_form_component('{{ template "sqlEscape" $dbPassword }}')
+AppConfig[:db_url] = 'jdbc:mysql://{{ template "sqlEscape" $dbHost }}:{{ template "sqlEscape" $dbPort }}/{{ template "sqlEscape" $dbName }}?useUnicode=true&characterEncoding=UTF-8&user=' + db_user + '&password=' + db_password + '&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
 {{ if ne (getenv "APPCONFIG_SOLR_URL") "" -}}
 AppConfig[:solr_url] = '{{ template "sqlEscape" $appConfigSolrURL }}'
 {{ else -}}
