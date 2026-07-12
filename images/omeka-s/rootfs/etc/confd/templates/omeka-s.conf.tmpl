@@ -8,7 +8,7 @@ location / {
     try_files $uri $uri/ /index.php?$args;
 }
 
-location ~ \.php$ {
+location = /index.php {
     try_files $uri =404;
     fastcgi_pass unix:{{ getenv "PHP_FPM_SOCKET" }};
     fastcgi_index index.php;
@@ -18,6 +18,14 @@ location ~ \.php$ {
     fastcgi_param HTTP_SCHEME https;
     {{ end }}
     include fastcgi_params;
+}
+
+location ~ \.php(?:/|$) {
+    return 404;
+}
+
+location ~* \.ini$ {
+    deny all;
 }
 
 location ~ /\. {
