@@ -215,6 +215,13 @@ variable "BRANCH" {
   default = ""
 }
 
+variable "BASE_NO_CACHE" {
+  # The published base image must resolve the current Alpine package index on
+  # every CI rebuild. Otherwise BuildKit can indefinitely reuse an apk layer
+  # after security fixes become available upstream.
+  default = false
+}
+
 ###############################################################################
 # Functions
 ###############################################################################
@@ -338,6 +345,7 @@ target "archivesspace-solr-common" {
 target "base-common" {
   inherits = ["common"]
   context = context("base")
+  no-cache = BASE_NO_CACHE
   contexts = {
     # The digest (sha256 hash) is not platform specific but the digest for the manifest of all platforms.
     # It will be the digest printed when you do: docker pull alpine:3.17.1

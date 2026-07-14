@@ -70,8 +70,8 @@ duplication.
 | Environment Variable | Default                                       | Description                                                                                                  |
 | :------------------- | :-------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
 | JWT_ADMIN_TOKEN      |                                               | Used for [bearer authentication]; supply a secret for services that enable Syn                               |
-| JWT_PRIVATE_KEY      | @see base/rootfs/etc/defaults/JWT_PRIVATE_KEY | Private key for JWT authentication, RSA PEM Format is expected (should only be used in the Drupal container) |
-| JWT_PUBLIC_KEY       | @see base/rootfs/etc/defaults/JWT_PUBLIC_KEY  | Public key for JWT authentication                                                                            |
+| JWT_PRIVATE_KEY      |                                               | Private key for JWT authentication, RSA PEM Format is expected (should only be used in the Drupal container) |
+| JWT_PUBLIC_KEY       |                                               | Public key for JWT authentication                                                                            |
 
 To generate a private public / private key pair use the following.
 
@@ -82,6 +82,8 @@ ssh-keygen -q -t rsa -m pem -f /tmp/JWT -N ""
 This produces two files `/tmp/JWT` and `/tmp/JWT.pub`. Which can be used for
 `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` respectively. The format is RSA PEM,
 *without a password*. **Do not share these files** keep their contents hidden.
+The image intentionally contains no default JWT key pair; inject unique keys
+through Docker secrets (preferred) or environment variables.
 
 The public/private key pair and [Syn] configuration are placed in `/opt/keys`
 and are only readable by the `jwt` group, if your service needs to read these files

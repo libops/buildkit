@@ -712,6 +712,63 @@ func TestApplicationDatabaseBootstrapIsExplicit(t *testing.T) {
 	}
 }
 
+func TestBaseImageDoesNotShipJWTKeyMaterial(t *testing.T) {
+	root := repoRoot(t)
+	for _, name := range []string{"JWT_PRIVATE_KEY", "JWT_PUBLIC_KEY"} {
+		path := filepath.Join(root, "images", "base", "rootfs", "etc", "defaults", name)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if strings.TrimSpace(string(content)) != "" {
+			t.Errorf("%s must not contain reusable JWT key material", path)
+		}
+	}
+}
+
+func TestSynAuthenticationTestsGenerateEphemeralJWTKeys(t *testing.T) {
+	root := repoRoot(t)
+	for _, image := range []string{"fcrepo6", "fcrepo7"} {
+		path := filepath.Join(root, "images", image, "tests", "SynAuthentication", "docker-compose.yml")
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+
+		for _, required := range []string{
+			"openssl genrsa -out /run/secrets/JWT_PRIVATE_KEY",
+			"-out /run/secrets/JWT_PUBLIC_KEY",
+			"jwt-keys:/run/secrets:ro",
+			"condition: service_completed_successfully",
+		} {
+			if !strings.Contains(string(content), required) {
+				t.Errorf("%s must contain %q", path, required)
+			}
+		}
+	}
+}
+
+func TestPublishedBaseImageRefreshesPackageMetadata(t *testing.T) {
+	root := repoRoot(t)
+	workflowPath := filepath.Join(root, ".github", "workflows", "build.yml")
+	workflow, err := os.ReadFile(workflowPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", workflowPath, err)
+	}
+	if !strings.Contains(string(workflow), `"BASE_NO_CACHE=${{ inputs.image == 'base' }}"`) {
+		t.Fatalf("%s must disable the BuildKit cache for published base rebuilds", workflowPath)
+	}
+
+	bakePath := filepath.Join(root, "docker-bake.hcl")
+	bake, err := os.ReadFile(bakePath)
+	if err != nil {
+		t.Fatalf("read %s: %v", bakePath, err)
+	}
+	if !strings.Contains(string(bake), "no-cache = BASE_NO_CACHE") {
+		t.Fatalf("%s must apply BASE_NO_CACHE to the base target", bakePath)
+	}
+}
+
 func TestMarketedApplicationImagesDoNotShipKnownCredentials(t *testing.T) {
 	root := repoRoot(t)
 	images := []string{"archivesspace", "drupal", "ojs", "omeka-s", "omeka-classic", "wp"}

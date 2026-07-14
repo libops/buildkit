@@ -502,7 +502,11 @@ func (r *Runner) runComposeUp(test TestCase, env []string, spec testSpec, logDir
 	}
 	defer upLog.Close()
 
-	command := r.composeCommand(ctx, test, env, "up", "--abort-on-container-exit")
+	// Successful one-shot initialization services must be allowed to exit
+	// without stopping the project before their dependants start. Fail fast on
+	// an unsuccessful container, and otherwise stop the project when the target
+	// service completes below.
+	command := r.composeCommand(ctx, test, env, "up", "--abort-on-container-failure")
 	writer := io.MultiWriter(&output, upLog)
 	command.Stdout = writer
 	command.Stderr = writer
@@ -555,12 +559,73 @@ func (r *Runner) runComposeUp(test TestCase, env []string, spec testSpec, logDir
 		}
 	}
 
+	if !spec.HealthCheck && len(spec.OutputConditions) == 0 && spec.StopAfter == 0 {
+		if err := r.waitForTargetExit(ctx, test, env, done, services); err != nil {
+			monitorFailures = append(monitorFailures, err.Error())
+		} else {
+			_ = r.composeOutput(context.Background(), test, env, "stop")
+		}
+	}
+
 	<-done
 	return composeUpResult{
 		Output:   final.Output,
 		ExitCode: final.ExitCode,
 		TimedOut: final.TimedOut,
 		Failures: monitorFailures,
+	}
+}
+
+func (r *Runner) waitForTargetExit(ctx context.Context, test TestCase, env []string, done <-chan struct{}, services []string) error {
+	service := ""
+	for _, candidate := range []string{imageContext(test.Image), r.metadata.PublishedImage(test.Image)} {
+		for _, available := range services {
+			if candidate == available {
+				service = available
+				break
+			}
+		}
+		if service != "" {
+			break
+		}
+	}
+	if service == "" {
+		return fmt.Errorf("target service for %s/%s not found in: %s", test.Image, test.Name, strings.Join(services, ", "))
+	}
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		containers := r.composeOutput(ctx, test, env, "ps", "-aq", service)
+		if containers.Err == nil {
+			ids := splitLines(containers.Output)
+			if len(ids) > 0 {
+				inspect := commandOutput(ctx, test.Dir, env, "docker", "inspect", "--format", "{{.State.Status}}", ids[0])
+				if inspect.Err == nil {
+					switch strings.TrimSpace(inspect.Output) {
+					case "exited", "dead":
+						return nil
+					case "running":
+						wait := commandOutput(ctx, test.Dir, env, "docker", "wait", ids[0])
+						if wait.Err != nil {
+							if ctx.Err() != nil {
+								return fmt.Errorf("target service %s did not exit before timeout: %w", service, ctx.Err())
+							}
+							return fmt.Errorf("wait for target service %s: %v\n%s", service, wait.Err, wait.Output)
+						}
+						return nil
+					}
+				}
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("target service %s was not created before timeout: %w", service, ctx.Err())
+		case <-done:
+			return fmt.Errorf("docker compose up exited before target service %s was created", service)
+		case <-ticker.C:
+		}
 	}
 }
 

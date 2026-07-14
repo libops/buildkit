@@ -4,6 +4,10 @@ x-common: &common
   restart: "no"
 
 name: fcrepo6-synauthentication
+
+volumes:
+  jwt-keys:
+
 services:
   activemq:
     <<: *common
@@ -18,12 +22,29 @@ services:
       DB_NAME: fcrepo
       DB_USER: fcrepo
       DB_PASSWORD: test-database-password
+  jwt-keygen:
+    <<: *common
+    image: ${FCREPO6:-libops/fcrepo:local-6}
+    entrypoint:
+      - /bin/sh
+      - -ec
+    command:
+      - |
+        umask 077
+        openssl genrsa -out /run/secrets/JWT_PRIVATE_KEY 2048
+        openssl rsa \
+          -in /run/secrets/JWT_PRIVATE_KEY \
+          -pubout \
+          -out /run/secrets/JWT_PUBLIC_KEY
+    volumes:
+      - jwt-keys:/run/secrets
   fcrepo:
     environment:
       DB_PASSWORD: test-database-password
       JWT_ADMIN_TOKEN: islandora
     volumes:
       - ./test.sh:/test.sh # Test to run.
+      - jwt-keys:/run/secrets:ro
     command:
       - /test.sh # Run test and exit.
     image: ${FCREPO6:-libops/fcrepo:local-6}
@@ -32,3 +53,5 @@ services:
         condition: service_started
       mariadb:
         condition: service_healthy
+      jwt-keygen:
+        condition: service_completed_successfully

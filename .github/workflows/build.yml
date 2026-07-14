@@ -162,6 +162,7 @@ jobs:
           make push \
             "PROGRESS=plain" \
             "BUILDER=${{ steps.buildx.outputs.name }}" \
+            "BASE_NO_CACHE=${{ inputs.image == 'base' }}" \
             "TARGET=${{ inputs.image }}-$PLATFORM" \
             "REPOSITORY=${{ inputs.repository }}" \
             "TAGS=${{ steps.metadata.outputs.first-tag }}" \

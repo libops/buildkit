@@ -63,6 +63,10 @@ TARGET ?= default
 # reducing build times, etc. See the GitHub actions for an example.
 CONTEXTS ?=
 
+# CI sets this for the base image so apk repositories are consulted on every
+# published rebuild instead of trusting a potentially stale registry cache.
+BASE_NO_CACHE ?= false
+
 # All images should be included in the bake files default target.
 # It is the source of truth.
 ALL_IMAGES = $(shell docker buildx bake --print default 2>/dev/null | jq -r '.target[].context')
@@ -127,6 +131,7 @@ build/bake.json: | docker-buildx jq build folder-permissions executable-permisso
 		BRANCH="$(BRANCH)" \
 	CACHE_FROM_REPOSITORY=$(CACHE_FROM_REPOSITORY) \
 	CACHE_TO_REPOSITORY=$(CACHE_TO_REPOSITORY) \
+	BASE_NO_CACHE=$(BASE_NO_CACHE) \
 	REPOSITORY=$(REPOSITORY) \
 	TAGS="$(TAGS)" \
 	docker buildx bake --print $(TARGET) 2>/dev/null > build/bake.json; \
