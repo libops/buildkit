@@ -2,10 +2,10 @@ FROM java17
 
 ARG TARGETARCH
 # renovate: datasource=custom.apache-downloads depName=apache-activemq5 packageName=activemq
-ARG SOFTWARE_VERSION=5.19.7
+ARG SOFTWARE_VERSION=5.19.8
 ARG ACTIVEMQ_FILE="apache-activemq-${SOFTWARE_VERSION}-bin.tar.gz"
 ARG ACTIVEMQ_URL="https://archive.apache.org/dist/activemq/${SOFTWARE_VERSION}/${ACTIVEMQ_FILE}"
-ARG ACTIVEMQ_FILE_SHA256="be84d738fec33058ab2ff5541c7f5590c1feced68f90bc7785d8a81f1c678862"
+ARG ACTIVEMQ_FILE_SHA256="e9cc464a810050aa0240ba3618e3243bd58bae85c6af600b9c02c3944553ab0b"
 
 EXPOSE 61616 5672 61613 1883 61614 8161
 

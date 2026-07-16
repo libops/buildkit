@@ -262,6 +262,135 @@ func TestComposeEnvUsesCurrentVersionedImageForGenericAlias(t *testing.T) {
 	}
 }
 
+func TestCumulativeBranchPlanKeepsEarlierFallbackTagsForCompose(t *testing.T) {
+	root := repoRoot(t)
+	metadata, err := LoadMetadata(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repository := t.TempDir()
+	runGit := func(args ...string) string {
+		t.Helper()
+		commandArgs := append([]string{
+			"-c", "user.name=Buildkit Tests",
+			"-c", "user.email=buildkit-tests@example.com",
+			"-c", "safe.directory=" + repository,
+			"-C", repository,
+		}, args...)
+		command := exec.Command("git", commandArgs...)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	write := func(path, content string) {
+		t.Helper()
+		fullPath := filepath.Join(repository, path)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commit := func(message string) string {
+		t.Helper()
+		runGit("add", ".")
+		runGit("commit", "-m", message)
+		return runGit("rev-parse", "HEAD")
+	}
+
+	runGit("init")
+	write("images/activemq6/Dockerfile", "ARG SOFTWARE_VERSION=6.2.6\n")
+	write("images/tomcat9/README.md", "Tomcat 9.0.118\n")
+	base := commit("base")
+
+	write("images/activemq6/Dockerfile", "ARG SOFTWARE_VERSION=6.2.7\n")
+	firstPush := commit("update activemq")
+
+	write("images/tomcat9/README.md", "Tomcat 9.0.119\n")
+	head := commit("update tomcat")
+
+	metadata.Root = repository
+	incremental, err := metadata.Plan(firstPush, head, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsString(incremental.Images, "activemq6") {
+		t.Fatalf("incremental images unexpectedly retained activemq6: %v", incremental.Images)
+	}
+	if !containsString(incremental.Images, "fcrepo6") {
+		t.Fatalf("incremental Tomcat plan must retest fcrepo6: %v", incremental.Images)
+	}
+
+	cumulative, err := metadata.Plan(base, head, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(cumulative.Images, "activemq6") {
+		t.Fatalf("cumulative branch images lost activemq6: %v", cumulative.Images)
+	}
+
+	fallbackImages := map[string]bool{}
+	for _, image := range cumulative.Images {
+		fallbackImages[image] = true
+	}
+	metadata.Root = root
+	resolver := imageResolver{
+		metadata:       metadata,
+		repository:     "libops",
+		mode:           "fallback",
+		fallbackTag:    "renovate.all-non-major-dependencies",
+		buildImages:    fallbackImages,
+		useBuildImages: true,
+	}
+	env := resolver.envFor("fcrepo6")
+	if got, want := env["ACTIVEMQ"], "libops/activemq:renovate.all-non-major-dependencies-6"; got != want {
+		t.Fatalf("ACTIVEMQ = %q, want %q", got, want)
+	}
+	mariadbTag, err := metadata.FirstTag("mariadb11", "version", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := env["MARIADB11"], "libops/mariadb:"+mariadbTag; got != want {
+		t.Fatalf("MARIADB11 = %q, want unchanged image %q", got, want)
+	}
+}
+
+func TestPushWorkflowUsesCumulativeFallbackImagesForBranchTags(t *testing.T) {
+	root := repoRoot(t)
+	workflowPath := filepath.Join(root, ".github", "workflows", "push.yml")
+	content, err := os.ReadFile(workflowPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(content)
+
+	for _, want := range []string{
+		`fallback_images: ${{ steps.plan.outputs.fallback_images }}`,
+		`DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}`,
+		`MERGE_BASE="$(git merge-base "$HEAD" "origin/${DEFAULT_BRANCH}")"`,
+		`./ci/image-metadata.sh plan --base "$MERGE_BASE" --head "$HEAD"`,
+		`echo "fallback_images=${FALLBACK_IMAGES}" >> "$GITHUB_OUTPUT"`,
+		`build-images: ${{ needs.plan.outputs.fallback_images }}`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("%s missing cumulative fallback-image contract %q", workflowPath, want)
+		}
+	}
+
+	uses := strings.Count(got, "build-images:")
+	fallbackUses := strings.Count(got, `build-images: ${{ needs.plan.outputs.fallback_images }}`)
+	if uses == 0 || fallbackUses != uses {
+		t.Fatalf("%s passes fallback images to %d of %d build/test jobs", workflowPath, fallbackUses, uses)
+	}
+	if strings.Contains(got, `build-images: ${{ needs.plan.outputs.images }}`) {
+		t.Fatalf("%s must not use the incremental build plan for fallback-tag resolution", workflowPath)
+	}
+}
+
 func TestPlanSupportsLevelFourImages(t *testing.T) {
 	root := repoRoot(t)
 	metadata, err := LoadMetadata(root)

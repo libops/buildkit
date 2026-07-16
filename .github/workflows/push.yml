@@ -53,6 +53,7 @@ jobs:
     needs: lint
     outputs:
       images: ${{ steps.plan.outputs.images }}
+      fallback_images: ${{ steps.plan.outputs.fallback_images }}
       level0: ${{ steps.plan.outputs.level0 }}
       level1: ${{ steps.plan.outputs.level1 }}
       level2: ${{ steps.plan.outputs.level2 }}
@@ -97,6 +98,9 @@ jobs:
           ALL: ${{ inputs.all || false }}
           FALLBACK_TAG: ${{ inputs.tag && inputs.tag || github.ref_name }}
           VERSION_TAGS: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
 
@@ -116,6 +120,18 @@ jobs:
 
           ./ci/image-metadata.sh "${args[@]}" | tee build-plan.out
           cat build-plan.out >> "$GITHUB_OUTPUT"
+
+          FALLBACK_IMAGES="$(sed -n 's/^images=//p' build-plan.out)"
+          if [ "$EVENT_NAME" = "push" ] &&
+             [ "$REF_NAME" != "$DEFAULT_BRANCH" ] &&
+             [ "$VERSION_TAGS" != "true" ]; then
+            MERGE_BASE="$(git merge-base "$HEAD" "origin/${DEFAULT_BRANCH}")"
+            FALLBACK_IMAGES="$(
+              ./ci/image-metadata.sh plan --base "$MERGE_BASE" --head "$HEAD" |
+                sed -n 's/^images=//p'
+            )"
+          fi
+          echo "fallback_images=${FALLBACK_IMAGES}" >> "$GITHUB_OUTPUT"
 
           mode="fallback"
           if [ "$VERSION_TAGS" = "true" ]; then
@@ -242,6 +258,7 @@ jobs:
       - name: Summary
         run: |
           echo "Images: ${{ steps.plan.outputs.images }}"
+          echo "Fallback-tag images: ${{ steps.plan.outputs.fallback_images }}"
           echo "Tests: ${{ steps.plan.outputs.tests }}"
           echo "Level 0 tests: ${{ steps.plan.outputs.test_level0 }}"
           echo "Level 1 tests: ${{ steps.plan.outputs.test_level1 }}"
@@ -269,7 +286,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     secrets: inherit
     permissions:
       contents: read
@@ -288,7 +305,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     secrets: inherit
     permissions:
       contents: read
@@ -307,7 +324,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     secrets: inherit
     permissions:
       contents: read
@@ -326,7 +343,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     secrets: inherit
     permissions:
       contents: read
@@ -345,7 +362,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     secrets: inherit
     permissions:
       contents: read
@@ -364,7 +381,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     permissions:
       contents: read
       packages: read
@@ -382,7 +399,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     permissions:
       contents: read
       packages: read
@@ -400,7 +417,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     permissions:
       contents: read
       packages: read
@@ -418,7 +435,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     permissions:
       contents: read
       packages: read
@@ -436,7 +453,7 @@ jobs:
       repository: libops
       fallback-tag: ${{ inputs.tag && inputs.tag || github.ref_name }}
       version-tags: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || inputs.version-tags || false }}
-      build-images: ${{ needs.plan.outputs.images }}
+      build-images: ${{ needs.plan.outputs.fallback_images }}
     permissions:
       contents: read
       packages: read

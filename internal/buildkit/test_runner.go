@@ -180,7 +180,7 @@ func parseTestOptions(args []string) (TestOptions, error) {
 	flags.StringVar(&options.Repository, "repository", options.Repository, "container repository for generated image refs")
 	flags.StringVar(&options.Mode, "mode", options.Mode, "tag mode: fallback or version")
 	flags.StringVar(&options.FallbackTag, "tag", options.FallbackTag, "fallback tag used for generated image refs")
-	flags.StringVar(&options.BuildImagesJSON, "build-images-json", "", "JSON image list built in this run; matching images use fallback tags")
+	flags.StringVar(&options.BuildImagesJSON, "build-images-json", "", "JSON image list available under the fallback tag")
 	flags.BoolVar(&options.Pull, "pull", false, "run docker compose pull --ignore-pull-failures before each test")
 	flags.StringVar(&options.LogsDir, "logs-dir", options.LogsDir, "directory for saved compose logs")
 	flags.DurationVar(&options.Timeout, "timeout", options.Timeout, "default timeout per test")

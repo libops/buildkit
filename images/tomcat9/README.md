@@ -1,6 +1,6 @@
 # Tomcat
 
-Docker image for [Tomcat] version 9.0.118.
+Docker image for [Tomcat] version 9.0.119.
 
 Built from [libops/isle-buildkit tomcat](https://github.com/libops/buildkit/tree/main/images/tomcat)
 
