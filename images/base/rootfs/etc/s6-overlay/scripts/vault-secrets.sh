@@ -341,7 +341,11 @@ write_secret_file() {
 
     chmod 0400 "${tmp}"
     if [[ "$(id -u)" = "0" ]]; then
-        chown "${app_uid}:0" "${tmp}"
+        if [[ "${name}" = "DB_ROOT_PASSWORD" ]]; then
+            chown 0:0 "${tmp}"
+        else
+            chown "${app_uid}:0" "${tmp}"
+        fi
     fi
     mv -f "${tmp}" "${target}"
 }

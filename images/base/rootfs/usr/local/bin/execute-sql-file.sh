@@ -4,6 +4,12 @@ ARGS=("$@")
 PROGNAME=$(basename "$0")
 readonly ARGS PROGNAME
 
+# shellcheck source=images/base/rootfs/usr/local/share/libops/database.sh
+source "${LIBOPS_DATABASE_LIBRARY:-/usr/local/share/libops/database.sh}"
+
+CLIENT_DEFAULTS_FILE=
+REMOVE_CLIENT_DEFAULTS_FILE=false
+
 function usage {
     cat <<-EOF
     usage: $PROGNAME options FILE
@@ -23,6 +29,7 @@ function usage {
        --port             The database port.
        --user             The user to connect as.
        --password         The password to use for the user.
+       --defaults-extra-file  Existing MariaDB client option file containing the password.
        --database         The database to run the sql command against. (Optional)
        -h --help          Show this help.
        -x --debug         Debug this script.
@@ -54,57 +61,53 @@ function fallback {
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --host) args="${args}-b " ;;
-        --port) args="${args}-c " ;;
-        --user) args="${args}-d " ;;
-        --password) args="${args}-e " ;;
-        --database) args="${args}-f " ;;
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    HOST=
+    PORT=
+    USER=
+    PASSWORD=
+    DATABASE=
+    DEFAULTS_EXTRA_FILE=
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "b:c:d:e:f:hx" OPTION; do
-        case $OPTION in
-        b)
-            HOST=${OPTARG}
+    while (($# > 0)); do
+        case "$1" in
+        --host|-b|--port|-c|--user|-d|--password|-e|--database|-f|--defaults-extra-file)
+            if (($# < 2)); then
+                echo "Option $1 requires a value" >&2
+                exit 1
+            fi
+            case "$1" in
+                --host|-b) HOST=$2 ;;
+                --port|-c) PORT=$2 ;;
+                --user|-d) USER=$2 ;;
+                --password|-e) PASSWORD=$2 ;;
+                --database|-f) DATABASE=$2 ;;
+                --defaults-extra-file) DEFAULTS_EXTRA_FILE=$2 ;;
+            esac
+            shift 2
             ;;
-        c)
-            PORT=${OPTARG}
-            ;;
-        d)
-            USER=${OPTARG}
-            ;;
-        e)
-            PASSWORD=${OPTARG}
-            ;;
-        f)
-            DATABASE=${OPTARG}
-            ;;
-        h)
+        --host=*) HOST=${1#*=}; shift ;;
+        --port=*) PORT=${1#*=}; shift ;;
+        --user=*) USER=${1#*=}; shift ;;
+        --password=*) PASSWORD=${1#*=}; shift ;;
+        --database=*) DATABASE=${1#*=}; shift ;;
+        --defaults-extra-file=*) DEFAULTS_EXTRA_FILE=${1#*=}; shift ;;
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
             ;;
-        *)
-            echo "Invalid Option: $OPTION" >&2
+        --) shift; break ;;
+        -) break ;;
+        -*)
+            echo "Invalid option: $1" >&2
             usage
             exit 1
+            ;;
+        *)
+            break
             ;;
         esac
     done
@@ -113,7 +116,9 @@ function cmdline {
         USER=${DB_ROOT_USER}
     fi
 
-    if fallback "--password" "PASSWORD" "DB_ROOT_PASSWORD"; then
+    if [[ -z "${PASSWORD}" && -n "${LIBOPS_DATABASE_PASSWORD:-}" ]]; then
+        PASSWORD=${LIBOPS_DATABASE_PASSWORD}
+    elif [[ -z "${PASSWORD}" && -z "${DEFAULTS_EXTRA_FILE}" ]] && fallback "--password" "PASSWORD" "DB_ROOT_PASSWORD"; then
         PASSWORD=${DB_ROOT_PASSWORD}
     fi
 
@@ -125,14 +130,12 @@ function cmdline {
         PORT=${DB_PORT}
     fi
 
-    shift $((OPTIND - 1))
-
     # Allow either passing in a file or reading from stdin by specifiying "-" or
     # ommiting completely.
-    if [[ -f "${1}" || -p "${1}" ]]; then
-        FILE="${1}"
+    if [[ -n "${1:-}" && ( -f "$1" || -p "$1" ) ]]; then
+        FILE=$1
         shift
-    elif [[ "${1}" == "-" ]]; then
+    elif [[ "${1:-}" == "-" ]]; then
         FILE=/dev/stdin
         shift
     else
@@ -140,7 +143,7 @@ function cmdline {
     fi
 
     # Remaining options to be passed onto the client, preceeded by '--'.
-    if [[ "${1}" == "--" ]]; then
+    if [[ "${1:-}" == "--" ]]; then
         shift
     fi
 
@@ -151,7 +154,12 @@ function cmdline {
         OPTIONS=()
     fi
 
-    readonly HOST PORT USER PASSWORD DATABASE FILE OPTIONS
+    if [[ -n "${DEFAULTS_EXTRA_FILE}" && ! -r "${DEFAULTS_EXTRA_FILE}" ]]; then
+        echo "MariaDB client option file is not readable: ${DEFAULTS_EXTRA_FILE}" >&2
+        exit 1
+    fi
+
+    readonly HOST PORT USER PASSWORD DATABASE DEFAULTS_EXTRA_FILE FILE OPTIONS
 
     return 0
 }
@@ -163,25 +171,42 @@ function wait_for_access {
         --host "${HOST}" \
         --port "${PORT}" \
         --user "${USER}" \
-        --password "${PASSWORD}" >&2
+        --defaults-extra-file "${CLIENT_DEFAULTS_FILE}" >&2
 }
 
 function mysql_execute_sql_file {
-    local database_arg=
+    local database_args=()
 
     if [[ -n "${DATABASE}" ]]; then
-        database_arg="--database=${DATABASE}"
+        database_args+=("--database=${DATABASE}")
     fi
 
     mariadb \
+        --defaults-extra-file="${CLIENT_DEFAULTS_FILE}" \
         --host="${HOST}" \
         --port="${PORT}" \
         --user="${USER}" \
-        --password="${PASSWORD}" \
         --protocol=tcp \
-        "${database_arg}" \
+        "${database_args[@]}" \
         "${OPTIONS[@]}" \
         <"${FILE}"
+}
+
+function prepare_client_defaults_file {
+    if [[ -n "${DEFAULTS_EXTRA_FILE}" ]]; then
+        CLIENT_DEFAULTS_FILE=${DEFAULTS_EXTRA_FILE}
+        return 0
+    fi
+
+    CLIENT_DEFAULTS_FILE=$(mktemp -t mariadb-client.XXXXXXXXXX)
+    database_write_client_defaults_file "${CLIENT_DEFAULTS_FILE}" "${PASSWORD}"
+    REMOVE_CLIENT_DEFAULTS_FILE=true
+}
+
+function cleanup_client_defaults_file {
+    if [[ "${REMOVE_CLIENT_DEFAULTS_FILE}" = "true" && -n "${CLIENT_DEFAULTS_FILE}" ]]; then
+        rm -f -- "${CLIENT_DEFAULTS_FILE}"
+    fi
 }
 
 function execute_sql_file {
@@ -190,6 +215,8 @@ function execute_sql_file {
 
 function main {
     cmdline "${ARGS[@]}"
+    prepare_client_defaults_file
+    trap cleanup_client_defaults_file EXIT
     wait_for_access
     execute_sql_file
 }

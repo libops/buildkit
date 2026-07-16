@@ -1,9 +1,17 @@
 name: Build and Push Docker Images
 on:
   push:
-    branches: ["*"]
+    branches: ["**"]
     paths:
+      - ".github/workflows/**"
+      - "ci/**"
+      - "cmd/**"
+      - "go.mod"
+      - "go.sum"
       - "images/**"
+      - "internal/**"
+      - "docker-bake.hcl"
+      - "Makefile"
   workflow_dispatch:
     inputs:
       image:
@@ -35,7 +43,9 @@ jobs:
       - uses: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" # v6
 
       - name: lint
-        run: shellcheck **/*.sh
+        run: |
+          mapfile -d '' scripts < <(git grep -Ilz -E '^#!.*(ba)?sh')
+          shellcheck "${scripts[@]}"
 
   plan:
     runs-on: ubuntu-24.04
@@ -62,6 +72,9 @@ jobs:
       sitectl_drupal_image_tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}
       sitectl_isle_libops_image_tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}
       sitectl_isle_images: ${{ steps.plan.outputs.sitectl_isle_images }}
+      sitectl_create_smoke_matrix: ${{ steps.plan.outputs.sitectl_create_smoke_matrix }}
+      sitectl_repository: ${{ steps.plan.outputs.sitectl_repository }}
+      sitectl_ref: ${{ steps.plan.outputs.sitectl_ref }}
     steps:
       - uses: "actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10" # v6
         with:
@@ -71,6 +84,9 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
+
+      - name: Test planner and repository contracts
+        run: go test -count=1 ./...
 
       - id: plan
         name: Plan
@@ -109,14 +125,118 @@ jobs:
             ./ci/image-metadata.sh first-tag "$1" "$mode" "$FALLBACK_TAG"
           }
 
+          planned_tag_assignment() {
+            local service="$1"
+            local image="$2"
+            if grep -Fq "\"${image}\"" build-plan.out; then
+              printf '%s=%s' "$service" "$(first_tag "$image")"
+            fi
+          }
+
+          add_smoke_row() {
+            local plugin="$1"
+            local packages="$2"
+            local create_args="$3"
+            local image_tags="$4"
+            local images="$5"
+            local local_plugin_repository="${6:-}"
+            local local_plugin_ref="${7:-main}"
+            local local_plugin_path="${8:-}"
+            if [ -z "${image_tags// }" ]; then
+              return
+            fi
+            smoke_matrix="$(
+              jq -c \
+                --arg plugin "$plugin" \
+                --arg packages "$packages" \
+                --arg create_args "$create_args" \
+                --arg image_tags "$image_tags" \
+                --arg images "$images" \
+                --arg local_plugin_repository "$local_plugin_repository" \
+                --arg local_plugin_ref "$local_plugin_ref" \
+                --arg local_plugin_path "$local_plugin_path" \
+                '. + [{
+                  "plugin": $plugin,
+                  "packages": $packages,
+                  "create-args": $create_args,
+                  "image-tags": $image_tags,
+                  "images": $images,
+                  "local-plugin-repository": $local_plugin_repository,
+                  "local-plugin-ref": $local_plugin_ref,
+                  "local-plugin-path": $local_plugin_path
+                }]' <<<"$smoke_matrix"
+            )"
+          }
+
+          coordinated_template_args() {
+            local repository="$1"
+            local branch="${GITHUB_REF_NAME}"
+
+            if [ "${branch}" = "main" ]; then
+              return
+            fi
+            if [[ ! "${branch}" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+              echo "Skipping coordinated template branch with unsafe ref name: ${branch}" >&2
+              return
+            fi
+            if git ls-remote --exit-code --heads "${repository}" "refs/heads/${branch}" >/dev/null 2>&1; then
+              printf '%s' "--template-repo ${repository} --template-branch ${branch}"
+            fi
+          }
+
+          sitectl_wp_image_tags="$(planned_tag_assignment wp wp-php84)"
+          sitectl_omeka_s_image_tags="$(planned_tag_assignment omeka-s omeka-s-php84)"
+          sitectl_omeka_classic_image_tags="$(planned_tag_assignment omeka-classic omeka-classic-php84)"
+          sitectl_ojs_image_tags="$(planned_tag_assignment ojs ojs-php84)"
+          sitectl_drupal_image_tags="$(planned_tag_assignment drupal drupal-php84)"
+          sitectl_isle_libops_image_tags="$(planned_tag_assignment drupal islandora-php84)"
+          sitectl_isle_images=""
+          sitectl_wp_create_args="$(coordinated_template_args https://github.com/libops/wp)"
+          sitectl_omeka_s_create_args="$(coordinated_template_args https://github.com/libops/omeka-s)"
+          sitectl_omeka_classic_create_args="$(coordinated_template_args https://github.com/libops/omeka-classic)"
+          sitectl_ojs_create_args="$(coordinated_template_args https://github.com/libops/ojs)"
+          sitectl_drupal_create_args="$(coordinated_template_args https://github.com/libops/drupal)"
+          sitectl_isle_template_args="$(coordinated_template_args https://github.com/libops/isle)"
+          if [ -z "${sitectl_isle_template_args}" ]; then
+            sitectl_isle_template_args="--template-repo https://github.com/libops/isle"
+          fi
+          sitectl_isle_create_args="${sitectl_isle_template_args} --fcrepo off --blazegraph off --isle-file-system-uri private --iiif triplet --iiif-topology disabled --bot-mitigation off"
+          sitectl_repository=""
+          sitectl_ref="main"
+          if [ -n "$(coordinated_template_args https://github.com/libops/sitectl)" ]; then
+            sitectl_repository="libops/sitectl"
+            sitectl_ref="${GITHUB_REF_NAME}"
+          fi
+          sitectl_isle_packages="sitectl sitectl-isle sitectl-drupal"
+          sitectl_isle_plugin_repository=""
+          sitectl_isle_plugin_ref="main"
+          sitectl_isle_plugin_path=""
+          if [ -n "$(coordinated_template_args https://github.com/libops/sitectl-isle)" ]; then
+            sitectl_isle_packages="sitectl sitectl-drupal"
+            sitectl_isle_plugin_repository="libops/sitectl-isle"
+            sitectl_isle_plugin_ref="${GITHUB_REF_NAME}"
+            sitectl_isle_plugin_path="sitectl-isle-source"
+          fi
+
+          smoke_matrix='[]'
+          add_smoke_row "wp" "sitectl sitectl-wp" "$sitectl_wp_create_args" "$sitectl_wp_image_tags" ""
+          add_smoke_row "omeka-s" "sitectl sitectl-omeka-s" "$sitectl_omeka_s_create_args" "$sitectl_omeka_s_image_tags" ""
+          add_smoke_row "omeka-classic" "sitectl sitectl-omeka-classic" "$sitectl_omeka_classic_create_args" "$sitectl_omeka_classic_image_tags" ""
+          add_smoke_row "ojs" "sitectl sitectl-ojs" "$sitectl_ojs_create_args" "$sitectl_ojs_image_tags" ""
+          add_smoke_row "drupal" "sitectl sitectl-drupal" "$sitectl_drupal_create_args" "$sitectl_drupal_image_tags" ""
+          add_smoke_row "isle" "$sitectl_isle_packages" "$sitectl_isle_create_args" "$sitectl_isle_libops_image_tags" "$sitectl_isle_images" "$sitectl_isle_plugin_repository" "$sitectl_isle_plugin_ref" "$sitectl_isle_plugin_path"
+
           {
-            echo "sitectl_wp_image_tags=wp=$(first_tag wp-php84)"
-            echo "sitectl_omeka_s_image_tags=omeka-s=$(first_tag omeka-s-php84)"
-            echo "sitectl_omeka_classic_image_tags=omeka-classic=$(first_tag omeka-classic-php84)"
-            echo "sitectl_ojs_image_tags=ojs=$(first_tag ojs-php84)"
-            echo "sitectl_drupal_image_tags=drupal=$(first_tag drupal-php84)"
-            echo "sitectl_isle_libops_image_tags=drupal=$(first_tag islandora-php84) activemq=$(first_tag activemq6) alpaca=$(first_tag alpaca) crayfits=$(first_tag crayfits) fits=$(first_tag fits) homarus=$(first_tag homarus) houdini=$(first_tag houdini) hypercube=$(first_tag hypercube) init=$(first_tag base) mariadb=$(first_tag mariadb11) mergepdf=$(first_tag mergepdf) solr=$(first_tag solr9)"
-            echo "sitectl_isle_images="
+            echo "sitectl_wp_image_tags=${sitectl_wp_image_tags}"
+            echo "sitectl_omeka_s_image_tags=${sitectl_omeka_s_image_tags}"
+            echo "sitectl_omeka_classic_image_tags=${sitectl_omeka_classic_image_tags}"
+            echo "sitectl_ojs_image_tags=${sitectl_ojs_image_tags}"
+            echo "sitectl_drupal_image_tags=${sitectl_drupal_image_tags}"
+            echo "sitectl_isle_libops_image_tags=${sitectl_isle_libops_image_tags}"
+            echo "sitectl_isle_images=${sitectl_isle_images}"
+            echo "sitectl_create_smoke_matrix=${smoke_matrix}"
+            echo "sitectl_repository=${sitectl_repository}"
+            echo "sitectl_ref=${sitectl_ref}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summary
@@ -134,6 +254,7 @@ jobs:
           echo "sitectl ojs image tags: ${{ steps.plan.outputs.sitectl_ojs_image_tags }}"
           echo "sitectl drupal image tags: ${{ steps.plan.outputs.sitectl_drupal_image_tags }}"
           echo "sitectl isle libops image tags: ${{ steps.plan.outputs.sitectl_isle_libops_image_tags }}"
+          echo "sitectl create smoke matrix: ${{ steps.plan.outputs.sitectl_create_smoke_matrix }}"
 
   build-level-0:
     if: ${{ needs.plan.outputs.level0 != '[]' }}
@@ -321,51 +442,14 @@ jobs:
       packages: read
 
   sitectl-create-smoke-test:
-    if: ${{ always() && !cancelled() && !failure() }}
-    needs: [plan, test-level-4]
+    if: ${{ always() && needs.plan.outputs.sitectl_create_smoke_matrix != '[]' && !cancelled() && !failure() }}
+    needs: [plan, test-level-0, test-level-1, test-level-2, test-level-3, test-level-4]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - plugin: wp
-            packages: sitectl sitectl-wp
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_wp_image_tags }}
-            images: ""
-          - plugin: omeka-s
-            packages: sitectl sitectl-omeka-s
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_omeka_s_image_tags }}
-            images: ""
-          - plugin: omeka-classic
-            packages: sitectl sitectl-omeka-classic
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_omeka_classic_image_tags }}
-            images: ""
-          - plugin: ojs
-            packages: sitectl sitectl-ojs
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_ojs_image_tags }}
-            images: ""
-          - plugin: drupal
-            packages: sitectl sitectl-drupal
-            create-args: ""
-            image-tags: ${{ needs.plan.outputs.sitectl_drupal_image_tags }}
-            images: ""
-          - plugin: isle
-            packages: sitectl sitectl-isle sitectl-drupal
-            create-args: >-
-              --template-repo https://github.com/libops/isle
-              --fcrepo off
-              --blazegraph off
-              --isle-file-system-uri private
-              --iiif triplet
-              --iiif-topology disabled
-              --bot-mitigation off
-            image-tags: ${{ needs.plan.outputs.sitectl_isle_libops_image_tags }}
-            images: ${{ needs.plan.outputs.sitectl_isle_images }}
+        include: ${{ fromJson(needs.plan.outputs.sitectl_create_smoke_matrix) }}
 
-    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@main
+    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@e366f7422565ea5ee71c0c626b740e03f2e2ffcd # main
     with:
       plugin: ${{ matrix.plugin }}
       create-definition: default
@@ -375,5 +459,10 @@ jobs:
       image-tags: ${{ matrix.image-tags }}
       images: ${{ matrix.images }}
       packages: ${{ matrix.packages }}
+      local-plugin-repository: ${{ matrix.local-plugin-repository }}
+      local-plugin-ref: ${{ matrix.local-plugin-ref }}
+      local-plugin-path: ${{ matrix.local-plugin-path }}
+      sitectl-repository: ${{ needs.plan.outputs.sitectl_repository }}
+      sitectl-ref: ${{ needs.plan.outputs.sitectl_ref }}
     permissions:
       contents: read

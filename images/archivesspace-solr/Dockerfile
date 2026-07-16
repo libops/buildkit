@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.20.0
 FROM solr9
 
+LABEL org.opencontainers.image.licenses="Apache-2.0 AND ECL-2.0"
+
 ARG TARGETARCH
 
 # renovate: datasource=github-releases depName=archivesspace packageName=archivesspace/archivesspace
@@ -17,6 +19,8 @@ RUN --mount=type=cache,id=archivesspace-solr-downloads-${TARGETARCH},sharing=loc
     && \
     mkdir -p /opt/solr/server/solr/configsets/archivesspace/conf && \
     cp -R /tmp/archivesspace-release/archivesspace/solr/. /opt/solr/server/solr/configsets/archivesspace/conf/ && \
+    mkdir -p /usr/share/licenses/archivesspace-solr && \
+    cp /tmp/archivesspace-release/archivesspace/COPYING /usr/share/licenses/archivesspace-solr/COPYING && \
     mkdir -p /opt/solr/server/solr/archivesspace && \
     cp -R /opt/solr/server/solr/configsets/archivesspace/. /opt/solr/server/solr/archivesspace/ && \
     printf 'name=archivesspace\n' > /opt/solr/server/solr/archivesspace/core.properties && \

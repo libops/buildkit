@@ -1,4 +1,22 @@
+{{- define "propertiesKeyEscape" -}}
+{{- $backslashes := replace . "\\" "\\\\" -1 -}}
+{{- $carriageReturns := replace $backslashes "\r" "\\r" -1 -}}
+{{- $newlines := replace $carriageReturns "\n" "\\n" -1 -}}
+{{- $tabs := replace $newlines "\t" "\\t" -1 -}}
+{{- $spaces := replace $tabs " " "\\ " -1 -}}
+{{- $colons := replace $spaces ":" "\\:" -1 -}}
+{{- $equals := replace $colons "=" "\\=" -1 -}}
+{{- $hashes := replace $equals "#" "\\#" -1 -}}
+{{- replace $hashes "!" "\\!" -1 -}}
+{{- end -}}
+{{- define "propertiesValueEscape" -}}
+{{- $backslashes := replace . "\\" "\\\\" -1 -}}
+{{- $carriageReturns := replace $backslashes "\r" "\\r" -1 -}}
+{{- $newlines := replace $carriageReturns "\n" "\\n" -1 -}}
+{{- $tabs := replace $newlines "\t" "\\t" -1 -}}
+{{- replace $tabs " " "\\ " -1 -}}
+{{- end -}}
 # Defines groups and the users that belong to them.
 # group=user[,user ...]
-{{ range $dir := lsdir "/activemq/group" }}{{ getv (printf "/activemq/group/%s/name" $dir) }}={{ getv (printf "/activemq/group/%s/members" $dir) }}
+{{ range $dir := lsdir "/activemq/group" }}{{ template "propertiesKeyEscape" (getv (printf "/activemq/group/%s/name" $dir)) }}={{ template "propertiesValueEscape" (getv (printf "/activemq/group/%s/members" $dir)) }}
 {{ end }}

@@ -454,7 +454,16 @@ func (r *Runner) specFor(test TestCase) testSpec {
 		}
 	case "drupal":
 		spec.Timeout = 10 * time.Minute
-	case "ojs-php83", "ojs-php84", "omeka-s-php83", "omeka-s-php84", "omeka-classic-php83", "omeka-classic-php84", "wp-php83", "wp-php84", "drupal-php83", "drupal-php84", "islandora-php83", "islandora-php84":
+	case "mariadb11":
+		if test.Name == "RejectsEmptyRootPassword" {
+			spec.ExpectedExitCode["mariadb"] = []int{1}
+		}
+	case "ojs-php83", "ojs-php84", "omeka-s-php83", "omeka-s-php84", "omeka-classic-php83", "omeka-classic-php84":
+		spec.Timeout = 10 * time.Minute
+		if test.Name == "ServiceLogsClientIp" {
+			spec.CheckClientIPLog = true
+		}
+	case "wp-php83", "wp-php84", "drupal-php83", "drupal-php84", "islandora-php83", "islandora-php84":
 		if test.Name == "ServiceLogsClientIp" {
 			spec.CheckClientIPLog = true
 		}
@@ -493,7 +502,11 @@ func (r *Runner) runComposeUp(test TestCase, env []string, spec testSpec, logDir
 	}
 	defer upLog.Close()
 
-	command := r.composeCommand(ctx, test, env, "up", "--abort-on-container-exit")
+	// Successful one-shot initialization services must be allowed to exit
+	// without stopping the project before their dependants start. Fail fast on
+	// an unsuccessful container, and otherwise stop the project when the target
+	// service completes below.
+	command := r.composeCommand(ctx, test, env, "up", "--abort-on-container-failure")
 	writer := io.MultiWriter(&output, upLog)
 	command.Stdout = writer
 	command.Stderr = writer
@@ -546,6 +559,14 @@ func (r *Runner) runComposeUp(test TestCase, env []string, spec testSpec, logDir
 		}
 	}
 
+	if !spec.HealthCheck && len(spec.OutputConditions) == 0 && spec.StopAfter == 0 {
+		if err := r.waitForTargetExit(ctx, test, env, done, services); err != nil {
+			monitorFailures = append(monitorFailures, err.Error())
+		} else {
+			_ = r.composeOutput(context.Background(), test, env, "stop")
+		}
+	}
+
 	<-done
 	return composeUpResult{
 		Output:   final.Output,
@@ -555,12 +576,64 @@ func (r *Runner) runComposeUp(test TestCase, env []string, spec testSpec, logDir
 	}
 }
 
+func (r *Runner) waitForTargetExit(ctx context.Context, test TestCase, env []string, done <-chan struct{}, services []string) error {
+	service := ""
+	for _, candidate := range []string{imageContext(test.Image), r.metadata.PublishedImage(test.Image)} {
+		for _, available := range services {
+			if candidate == available {
+				service = available
+				break
+			}
+		}
+		if service != "" {
+			break
+		}
+	}
+	if service == "" {
+		return fmt.Errorf("target service for %s/%s not found in: %s", test.Image, test.Name, strings.Join(services, ", "))
+	}
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		containers := r.composeOutput(ctx, test, env, "ps", "-aq", service)
+		if containers.Err == nil {
+			ids := splitLines(containers.Output)
+			if len(ids) > 0 {
+				inspect := commandOutput(ctx, test.Dir, env, "docker", "inspect", "--format", "{{.State.Status}}", ids[0])
+				if inspect.Err == nil {
+					switch strings.TrimSpace(inspect.Output) {
+					case "exited", "dead":
+						return nil
+					case "running":
+						wait := commandOutput(ctx, test.Dir, env, "docker", "wait", ids[0])
+						if wait.Err != nil {
+							if ctx.Err() != nil {
+								return fmt.Errorf("target service %s did not exit before timeout: %w", service, ctx.Err())
+							}
+							return fmt.Errorf("wait for target service %s: %v\n%s", service, wait.Err, wait.Output)
+						}
+						return nil
+					}
+				}
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("target service %s was not created before timeout: %w", service, ctx.Err())
+		case <-done:
+			return fmt.Errorf("docker compose up exited before target service %s was created", service)
+		case <-ticker.C:
+		}
+	}
+}
+
 func (r *Runner) waitForHealthy(ctx context.Context, test TestCase, env []string, done <-chan struct{}, services []string) error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	targetServices := r.healthcheckServices(test, services)
-	attempts := 20
-	for attempt := 1; attempt <= attempts; attempt++ {
+	for {
 		healthy, err := r.anyHealthyContainer(ctx, test, env, targetServices)
 		if err == nil && healthy {
 			fmt.Fprintf(r.stdout, "healthy service found for %s/%s: %s\n", test.Image, test.Name, strings.Join(targetServices, ", "))
@@ -574,7 +647,6 @@ func (r *Runner) waitForHealthy(ctx context.Context, test TestCase, env []string
 		case <-ticker.C:
 		}
 	}
-	return fmt.Errorf("no target service reported healthy after %d attempts", attempts)
 }
 
 func (r *Runner) healthcheckServices(test TestCase, services []string) []string {

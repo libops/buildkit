@@ -2,6 +2,8 @@
 ARG PHP_BASE=nginx-php83
 FROM ${PHP_BASE}
 
+LABEL org.opencontainers.image.licenses="GPL-3.0-only"
+
 ARG TARGETARCH
 ARG PHP_FPM_SOCKET=/run/php-fpm/php-fpm.sock
 
@@ -9,7 +11,15 @@ ARG \
     # renovate: datasource=repology depName=alpine_3_24/imagemagick
     IMAGEMAGICK_VERSION=7.1.2.24-r0 \
     # renovate: datasource=repology depName=alpine_3_24/msmtp
-    MSMTP_VERSION=1.8.32-r1
+    MSMTP_VERSION=1.8.32-r1 \
+    # renovate: datasource=repology depName=alpine_3_24/unzip
+    UNZIP_VERSION=6.0-r16 \
+    # renovate: datasource=github-releases depName=omeka-s packageName=omeka/omeka-s
+    SOFTWARE_VERSION=4.2.1
+
+ARG FILE=omeka-s-${SOFTWARE_VERSION}.zip
+ARG URL=https://github.com/omeka/omeka-s/releases/download/v${SOFTWARE_VERSION}/${FILE}
+ARG SHA256="cc27d1c7aca0209523d19aa285f4a08e29e34950dcc446951a7c1311de348e82"
 
 EXPOSE 80
 WORKDIR /var/www/omeka-s
@@ -18,8 +28,19 @@ RUN --mount=type=cache,id=omeka-s-apk-${TARGETARCH},sharing=locked,target=/var/c
     apk add \
         imagemagick=="${IMAGEMAGICK_VERSION}" \
         msmtp=="${MSMTP_VERSION}" \
+        unzip=="${UNZIP_VERSION}" \
     && \
-    mkdir -p /var/www/omeka-s/config /var/www/omeka-s/files && \
+    cleanup.sh
+
+RUN --mount=type=cache,id=omeka-s-downloads-${TARGETARCH},sharing=locked,target=/opt/downloads \
+    download.sh \
+        --url "${URL}" \
+        --sha256 "${SHA256}" \
+        --strip \
+        --dest /var/www/omeka-s \
+    && \
+    mkdir -p /usr/share/licenses/omeka-s && \
+    cp /var/www/omeka-s/LICENSE /usr/share/licenses/omeka-s/LICENSE && \
     chown -R nginx:nginx /var/www/omeka-s && \
     cleanup.sh
 
@@ -28,10 +49,10 @@ ENV \
     DB_PORT=3306 \
     DB_NAME=omeka_s \
     DB_USER=omeka_s \
-    DB_PASSWORD=changeme \
+    DB_PASSWORD= \
     OMEKA_S_ADMIN_EMAIL=admin@example.com \
     OMEKA_S_ADMIN_NAME=Administrator \
-    OMEKA_S_ADMIN_PASSWORD=changeme \
+    OMEKA_S_ADMIN_PASSWORD= \
     OMEKA_S_SITE_TITLE="Omeka S" \
     OMEKA_S_TIME_ZONE=UTC \
     OMEKA_S_LOCALE=en_US \
@@ -64,8 +85,9 @@ ENV \
     PHP_MAX_INPUT_TIME=300 \
     PHP_DEFAULT_SOCKET_TIMEOUT=300 \
     PHP_REQUEST_TERMINATE_TIMEOUT=300 \
-    PHP_MEMORY_LIMIT=256M
+    PHP_MEMORY_LIMIT=256M \
+    S6_CMD_WAIT_FOR_SERVICES_MAXTIME=600000
 
 COPY --link rootfs /
 
-HEALTHCHECK CMD curl -s http://localhost/status | grep -q pool
+HEALTHCHECK CMD test -f /installed && test -f /var/www/omeka-s/index.php && curl -fsS http://localhost/status | grep -q pool

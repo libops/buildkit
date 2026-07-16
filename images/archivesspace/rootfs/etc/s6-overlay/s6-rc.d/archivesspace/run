@@ -16,4 +16,5 @@ trap terminate TERM
 
 setsid /usr/local/bin/archivesspace-startup.sh &
 child=$!
+unset DB_ROOT_PASSWORD
 wait "${child}"

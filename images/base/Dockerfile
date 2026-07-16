@@ -26,7 +26,7 @@ ARG \
   # renovate: datasource=repology depName=alpine_3_24/ca-certificates
   CA_CERTIFICATES_VERSION=20260611-r0 \
   # renovate: datasource=repology depName=alpine_3_24/curl
-  CURL_VERSION=8.20.0-r1 \
+  CURL_VERSION=8.21.0-r0 \
   # renovate: datasource=repology depName=alpine_3_24/git
   GIT_VERSION=2.54.0-r0 \
   # renovate: datasource=repology depName=alpine_3_24/gnupg
@@ -135,20 +135,22 @@ ENV \
     S6_SERVICES_GRACETIME=30000 \
     TERM=xterm
 
-# CERT_AUTHORITY and CERT_PUBLIC as well as JWT_PUBLIC_KEY and JWT_PRIVATE_KEY
-# are defined in /etc/defaults, as Docker does not support setting multiline
-# environment variables via ENV.
+# CERT_AUTHORITY, CERT_PUBLIC, JWT_PUBLIC_KEY, and JWT_PRIVATE_KEY are defined
+# as empty values in /etc/defaults because Docker does not support multiline
+# ENV values. Deployments that use JWT authentication must inject their own
+# key pair through secrets or environment variables.
 ENV \
     APP_UID=100 \
+    DB_BOOTSTRAP_ENABLED=false \
     DB_HOST=mariadb \
     DB_NAME=default \
-    DB_PASSWORD=password \
+    DB_PASSWORD= \
     DB_PORT=3306 \
-    DB_ROOT_PASSWORD=password \
+    DB_ROOT_PASSWORD= \
     DB_ROOT_USER=root \
     DB_USER=default \
     DEVELOPMENT_ENVIRONMENT=false \
-    JWT_ADMIN_TOKEN=islandora \
+    JWT_ADMIN_TOKEN= \
     LIBOPS_PROJECT_ID= \
     LIBOPS_SITE_ID= \
     UID= \

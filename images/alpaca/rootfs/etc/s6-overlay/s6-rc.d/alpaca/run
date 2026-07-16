@@ -2,12 +2,19 @@
 # shellcheck shell=bash
 set -e
 
+# shellcheck disable=SC1091
+source /usr/local/share/libops/environment.sh
+
+require_environment_variables ALPACA_JMS_USER ALPACA_JMS_PASSWORD
+
 alpaca_java_opts=()
 
 if [ -n "${ALPACA_JAVA_OPTS:-}" ]; then
   read -r -a alpaca_java_opts <<<"$ALPACA_JAVA_OPTS"
 fi
 
+unset ALPACA_JMS_PASSWORD
+unset DB_ROOT_PASSWORD
 exec s6-setuidgid alpaca java "${alpaca_java_opts[@]}" \
   -jar /opt/alpaca/alpaca.jar \
   -c /opt/alpaca/alpaca.properties

@@ -1,17 +1,20 @@
 # MariaDB 11
 
-Docker image for [MariaDB] version 11.4.12
+Docker image for [MariaDB] version 11.8.8.
 
 Built from [libops/isle-buildkit mariadb11](https://github.com/libops/buildkit/tree/main/images/mariadb11)
 
 Please refer to the [MariaDB Documentation] for more in-depth information.
 
-As a quick example this will bring up an instance of MariaDB, and allow you to
-log in with client as the user `root` with the password `password`.
+As a quick example this will generate a root password, bring up MariaDB, and
+connect as `root` using that generated credential.
 
 ```bash
-docker run --rm -d -name mariadb libops/mariadb
-docker exec -ti mariadb mysql -u root --password='password'
+export DB_ROOT_PASSWORD="$(openssl rand -hex 32)"
+docker run --rm -d --name mariadb \
+  --env DB_ROOT_PASSWORD \
+  libops/mariadb:11
+docker exec -ti --env MYSQL_PWD="${DB_ROOT_PASSWORD}" mariadb mariadb -u root
 ```
 
 ## Dependencies
@@ -41,8 +44,11 @@ default database connection configuration.
 
 | Environment Variable | Default | Description                                                                           |
 | :------------------- | :------ | :------------------------------------------------------------------------------------ |
-| MYSQL_ROOT_PASSWORD  |         | The database root user password. Defaults to `DB_ROOT_PASSWORD`                       |
-| MYSQL_ROOT_USER      |         | The database root user (used to create the site database). Defaults to `DB_ROOT_USER` |
+| DB_ROOT_PASSWORD     |         | The database root password; required at startup                                       |
+| DB_ROOT_USER         | root    | The database root user                                                                |
+| DB_NAME              | default | Optional scoped database to create when `DB_PASSWORD` is set                          |
+| DB_USER              | default | Optional scoped database user to create when `DB_PASSWORD` is set                     |
+| DB_PASSWORD          |         | Scoped user password; leave empty when provisioning through a separate initializer     |
 | MYSQL_MAX_ALLOWED_PACKET | 16777216 | Max packet length to send to or receive from the server, [documentation](https://mariadb.com/docs/server/ref/mdb/system-variables/max_allowed_packet/)
 | MYSQL_TRANSACTION_ISOLATION | READ-COMMITTED | The isolation level for transactions.
 

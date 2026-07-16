@@ -232,7 +232,7 @@ func (m *Metadata) FirstTag(image, mode, fallback string) (string, error) {
 }
 
 func (m *Metadata) versionTags(image, fallback string) ([]string, error) {
-	if tag, ok, err := m.lampAppVersionTag(image); ok || err != nil {
+	if tag, ok, err := m.composerScaffoldVersionTag(image); ok || err != nil {
 		if err != nil {
 			return nil, err
 		}
@@ -287,9 +287,9 @@ func (m *Metadata) versionTags(image, fallback string) ([]string, error) {
 	return uniqueStrings(result), nil
 }
 
-func (m *Metadata) lampAppVersionTag(image string) (string, bool, error) {
+func (m *Metadata) composerScaffoldVersionTag(image string) (string, bool, error) {
 	suffix := phpFlavorSuffix(image)
-	if suffix == "" || !isLAMPAppImage(image) {
+	if suffix == "" || !isComposerScaffoldImage(image) {
 		return "", false, nil
 	}
 	value, err := dockerfileArgDefault(filepath.Join(m.Root, "images", "nginx", "Dockerfile"), "NGINX_VERSION")
@@ -306,9 +306,9 @@ func (m *Metadata) lampAppVersionTag(image string) (string, bool, error) {
 	return "nginx-" + version + "-" + suffix, true, nil
 }
 
-func isLAMPAppImage(image string) bool {
+func isComposerScaffoldImage(image string) bool {
 	switch imageContext(image) {
-	case "drupal", "islandora", "ojs", "omeka-classic", "omeka-s", "wp":
+	case "drupal", "islandora", "wp":
 		return true
 	default:
 		return false
@@ -600,10 +600,14 @@ func splitLines(value string) []string {
 
 func isGlobalPath(path string) bool {
 	return path == "docker-bake.hcl" ||
+		path == "go.mod" ||
+		path == "go.sum" ||
 		path == "Makefile" ||
 		strings.HasPrefix(path, "buildSrc/") ||
+		strings.HasPrefix(path, "cmd/") ||
 		strings.HasPrefix(path, "ci/") ||
-		strings.HasPrefix(path, ".github/workflows/")
+		strings.HasPrefix(path, ".github/workflows/") ||
+		strings.HasPrefix(path, "internal/")
 }
 
 func (m *Metadata) expandDependents(affected []string) []string {

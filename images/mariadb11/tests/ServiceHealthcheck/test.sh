@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 
 # Invoked indirectly by the SIGTERM trap below.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 on_terminate() {
     echo "Termination signal received. Exiting..."
     exit 0

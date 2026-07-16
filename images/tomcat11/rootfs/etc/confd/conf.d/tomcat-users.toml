@@ -3,4 +3,5 @@ src = "tomcat-users.xml.tmpl"
 dest = "/opt/tomcat/conf/tomcat-users.xml"
 uid = 100
 gid = 1000
+mode = "0640"
 keys = [ "/" ]

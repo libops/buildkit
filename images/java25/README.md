@@ -1,8 +1,8 @@
-# Java 21
+# Java 25
 
-Docker image for [Java] OpenJDK version 21.
+Docker image for [Java] OpenJDK version 25.
 
-Built from [libops/isle-buildkit java21](https://github.com/libops/buildkit/tree/main/images/java21)
+Built from [libops/buildkit java25](https://github.com/libops/buildkit/tree/main/images/java25)
 
 Please refer to the [Java Documentation] for more in-depth information.
 

@@ -22,36 +22,25 @@ EOF
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
-
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "hx" OPTION; do
-        case $OPTION in
-        h)
+    while (($# > 0)); do
+        case "$1" in
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            if (($# > 0)); then
+                echo "cleanup.sh does not accept positional arguments" >&2
+                exit 1
+            fi
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
+            echo "Invalid option or argument: $1" >&2
             exit 1
             ;;
         esac
@@ -63,7 +52,9 @@ function cmdline {
 function main {
     cmdline "${ARGS[@]}"
     for file in /etc/cleanup.d/*; do
-        $file
+        if [[ -f "${file}" && -x "${file}" ]]; then
+            "${file}"
+        fi
     done
 }
 main

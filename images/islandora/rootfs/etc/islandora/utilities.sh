@@ -100,11 +100,10 @@ function execute_sql_file {
     port=$(drupal_site_env "${site}" "DB_PORT")
     user=$(drupal_site_env "${site}" "DB_ROOT_USER")
     password=$(drupal_site_env "${site}" "DB_ROOT_PASSWORD")
-    execute-sql-file.sh \
+    LIBOPS_DATABASE_PASSWORD="${password}" execute-sql-file.sh \
         --host "${host}" \
         --port "${port}" \
         --user "${user}" \
-        --password "${password}" \
         "${@}"
 }
 
@@ -115,16 +114,12 @@ function mysql_query {
     db_name=$(drupal_site_env "${site}" "DB_NAME")
     db_user=$(drupal_site_env "${site}" "DB_USER")
     db_password=$(drupal_site_env "${site}" "DB_PASSWORD")
-    cat <<-EOF
--- Create if does not exist.
-CREATE DATABASE IF NOT EXISTS ${db_name} CHARACTER SET utf8 COLLATE utf8_general_ci;
-CREATE USER IF NOT EXISTS ${db_user}@'%' IDENTIFIED BY "${db_password}";
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON ${db_name}.* to ${db_user}@'%' IDENTIFIED BY "${db_password}";
-FLUSH PRIVILEGES;
-
--- Update DB_USER password if changed.
-SET PASSWORD FOR ${db_user}@'%' = PASSWORD('${db_password}');
-EOF
+    DB_NAME="${db_name}" \
+        DB_USER="${db_user}" \
+        DB_PASSWORD="${db_password}" \
+        DB_CHARACTER_SET=utf8 \
+        DB_COLLATION=utf8_general_ci \
+        render-database-bootstrap-sql.sh
 }
 
 function mysql_create_database {
@@ -209,16 +204,16 @@ function install_site {
     echo "USE_EXISTIG_CONFIG: ${use_existing_config_arg}"
     echo "EVERYTHING ELSE: $*"
 
+    LIBOPS_DRUPAL_INSTALL_ACCOUNT_PASSWORD="${account_password}" \
+    LIBOPS_DRUPAL_INSTALL_DB_PASSWORD="${password}" \
     /usr/local/bin/install-drupal-site.sh \
         --host "${host}" \
         --port "${port}" \
         --db-user "${user}" \
-        --db-password "${password}" \
         --db-name "${db_name}" \
         "${profile}" \
         --account-mail="${account_email}" \
         --account-name="${account_name}" \
-        --account-pass="${account_password}" \
         --site-mail="${site_email}" \
         --locale="${site_locale}" \
         --site-name="${site_name}" \

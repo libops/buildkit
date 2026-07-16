@@ -19,6 +19,19 @@ create_jwt() {
     printf '%s.%s' "${signing_input}" "${signature}"
 }
 
+corrupt_jwt_signature() {
+    local header payload replacement signature token
+    token=${1}
+    IFS=. read -r header payload signature <<<"${token}"
+
+    case "${signature:0:1}" in
+    A) replacement=B ;;
+    *) replacement=A ;;
+    esac
+
+    printf '%s.%s.%s%s' "${header}" "${payload}" "${replacement}" "${signature:1}"
+}
+
 post_status() {
     local body_file token
     token=${1}
@@ -42,10 +55,7 @@ if [[ "${valid_status}" != 2* ]]; then
 fi
 echo "Valid JWT accepted with HTTP ${valid_status}."
 
-case "${valid_jwt: -1}" in
-x) bad_jwt="${valid_jwt%?}y" ;;
-*) bad_jwt="${valid_jwt%?}x" ;;
-esac
+bad_jwt=$(corrupt_jwt_signature "${valid_jwt}")
 
 bad_status=$(post_status "${bad_jwt}" /tmp/syn-bad-response.txt)
 if [[ "${bad_status}" != "401" ]]; then

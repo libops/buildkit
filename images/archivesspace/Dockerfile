@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.20.0
 FROM java17
 
+LABEL org.opencontainers.image.licenses="ECL-2.0"
+
 ARG TARGETARCH
 
 ARG \
@@ -62,6 +64,8 @@ RUN --mount=type=cache,id=archivesspace-downloads-${TARGETARCH},sharing=locked,t
         --sha256 "${MYSQL_CONNECTOR_SHA256}" \
         --dest /archivesspace/lib \
     && \
+    mkdir -p /usr/share/licenses/archivesspace && \
+    cp /archivesspace/COPYING /usr/share/licenses/archivesspace/COPYING && \
     chmod +x /archivesspace/archivesspace.sh /archivesspace/scripts/*.sh && \
     chown -R archivesspace:archivesspace /archivesspace && \
     cleanup.sh
@@ -74,7 +78,7 @@ ENV \
     ASPACE_JAVA_XMX=-Xmx2048m \
     DB_HOST=mariadb \
     DB_NAME=archivesspace \
-    DB_PASSWORD=changeme \
+    DB_PASSWORD= \
     DB_PORT=3306 \
     DB_USER=archivesspace \
     INGRESS_HOSTNAMES=localhost \

@@ -4,29 +4,33 @@ set -euo pipefail
 
 export PATH="/var/www/drupal/vendor/bin:${PATH}"
 
+# shellcheck source=images/base/rootfs/usr/local/share/libops/database.sh
+source "${LIBOPS_DATABASE_LIBRARY:-/usr/local/share/libops/database.sh}"
+# shellcheck source=images/base/rootfs/usr/local/share/libops/environment.sh
+source "${LIBOPS_ENVIRONMENT_LIBRARY:-/usr/local/share/libops/environment.sh}"
+
 function mysql_create_database {
-    cat <<-SQL | create-database.sh
-CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* to '${DB_USER}'@'%';
-FLUSH PRIVILEGES;
-
-SET PASSWORD FOR ${DB_USER}@'%' = PASSWORD('${DB_PASSWORD}');
-SQL
+    DB_CHARACTER_SET=utf8mb4 \
+        DB_COLLATION=utf8mb4_unicode_ci \
+        render-database-bootstrap-sql.sh | create-database.sh
 }
 
 function mysql_count_query {
     cat <<-SQL
 SELECT COUNT(DISTINCT table_name)
 FROM information_schema.columns
-WHERE table_schema = '${DB_NAME}';
+WHERE table_schema = DATABASE();
 SQL
 }
 
 function installed {
     local count
-    count=$(execute-sql-file.sh <(mysql_count_query) -- -N 2>/dev/null) || return 1
+    count=$(LIBOPS_DATABASE_PASSWORD="${DB_PASSWORD}" execute-sql-file.sh \
+        --host "${DB_HOST}" \
+        --port "${DB_PORT}" \
+        --user "${DB_USER}" \
+        --database "${DB_NAME}" \
+        <(mysql_count_query) -- -N 2>/dev/null) || return 1
     [[ ${count:-0} -ne 0 ]]
 }
 
@@ -53,7 +57,7 @@ function install_site {
         existing_config_arg=("--existing-config")
     fi
 
-    drush \
+    DRUSH_COMMAND_SITE_INSTALL_OPTIONS_ACCOUNT_PASS="${DRUPAL_DEFAULT_ACCOUNT_PASSWORD}" drush \
         -n \
         -r /var/www/drupal/web \
         site:install "${DRUPAL_DEFAULT_PROFILE}" \
@@ -62,10 +66,8 @@ function install_site {
         --site-name="${DRUPAL_DEFAULT_NAME}" \
         --site-mail="${DRUPAL_DEFAULT_EMAIL}" \
         --account-name="${DRUPAL_DEFAULT_ACCOUNT_NAME}" \
-        --account-pass="${DRUPAL_DEFAULT_ACCOUNT_PASSWORD}" \
         --account-mail="${DRUPAL_DEFAULT_ACCOUNT_EMAIL}" \
-        --locale="${DRUPAL_DEFAULT_LOCALE}" \
-        --db-url="mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+        --locale="${DRUPAL_DEFAULT_LOCALE}"
 }
 
 function run_install_hooks {
@@ -127,14 +129,19 @@ function main {
         return 0
     fi
 
+    require_environment_variables DB_HOST DB_NAME DB_USER DB_PASSWORD DRUPAL_DEFAULT_SALT
+
     cd /var/www/drupal
     drush_cache_setup
     setup_directories
-    mysql_create_database
+    if [ "${DB_HOST}" = "mariadb" ]; then
+        database_bootstrap_if_enabled mysql_create_database
+    fi
 
     if installed; then
         echo "Already Installed"
     else
+        require_environment_variables DRUPAL_DEFAULT_ACCOUNT_PASSWORD
         echo "Installing"
         install_site
         run_install_hooks
@@ -142,4 +149,7 @@ function main {
     fi
     finished
 }
-main
+
+if [ "${DRUPAL_SETUP_LIBRARY_ONLY:-false}" != "true" ]; then
+    main
+fi

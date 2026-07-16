@@ -24,52 +24,43 @@ EOF
 }
 
 function cmdline {
-    local arg=
-    for arg; do
-        local delim=""
-        case "$arg" in
-        # Translate --gnu-long-options to -g (short options)
-        --help) args="${args}-h " ;;
-        --debug) args="${args}-x " ;;
-        # Pass through anything else
-        *)
-            [[ "${arg:0:1}" == "-" ]] || delim="\""
-            args="${args}${delim}${arg}${delim} "
-            ;;
-        esac
-    done
+    local positional=()
 
-    # Reset the positional parameters to the short options
-    eval set -- "${args}"
-
-    while getopts "hx" OPTION; do
-        case $OPTION in
-        h)
+    while (($# > 0)); do
+        case "$1" in
+        -h|--help)
             usage
             exit 0
             ;;
-        x)
+        -x|--debug)
             set -x
+            shift
+            ;;
+        --)
+            shift
+            positional+=("$@")
+            break
+            ;;
+        -*)
+            echo "Invalid option: $1" >&2
+            exit 1
             ;;
         *)
-            echo "Invalid Option: $OPTION" >&2
-            usage
-            exit 1
+            positional+=("$1")
+            shift
             ;;
         esac
     done
 
-    shift $((OPTIND - 1))
-
-    if [ "$#" -ne 2 ]; then
+    if [ "${#positional[@]}" -ne 2 ]; then
         echo "Illegal number of parameters" >&2
         usage
         return 1
     fi
 
-    readonly HOST=${1}
-    shift
-    readonly PORT=${1}
+    HOST=${positional[0]}
+    PORT=${positional[1]}
+    readonly HOST PORT
 
     return 0
 }

@@ -19,30 +19,116 @@ update_dockerfile_sha() {
   local ARG="$2"
   local DOCKERFILES=("${@:3}")
   local SHA
-  curl -fLs "$URL" -o curl.resp || echo "Request failed with exit code $?"
-  SHA=$(shasum -a 256 curl.resp | awk '{print $1}')
+  local DOWNLOAD
+  local dockerfile
+  DOWNLOAD=$(mktemp)
 
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' 's|^ARG '"$ARG"'=.*|ARG '"$ARG"'="'"$SHA"'"|g' "${DOCKERFILES[@]}"
-  else
-    sed -i 's|^ARG '"$ARG"'=.*|ARG '"$ARG"'="'"$SHA"'"|g' "${DOCKERFILES[@]}"
+  if ! curl \
+    --fail \
+    --location \
+    --retry 3 \
+    --retry-all-errors \
+    --connect-timeout 20 \
+    --max-time 600 \
+    --silent \
+    --show-error \
+    --output "$DOWNLOAD" \
+    "$URL"; then
+    rm -f "$DOWNLOAD"
+    echo "Failed to download release artifact: $URL" >&2
+    return 1
   fi
-  rm curl.resp
+
+  SHA=$(shasum -a 256 "$DOWNLOAD" | awk '{print $1}')
+  if [[ ! "$SHA" =~ ^[0-9a-f]{64}$ ]]; then
+    rm -f "$DOWNLOAD"
+    echo "Failed to calculate SHA256 for release artifact: $URL" >&2
+    return 1
+  fi
+
+  for dockerfile in "${DOCKERFILES[@]}"; do
+    if [[ $(grep -Ec "^[[:space:]]*(ARG[[:space:]]+)?${ARG}=\"?[[:xdigit:]]{64}\"?" "${dockerfile}") -ne 1 ]]; then
+      rm -f "$DOWNLOAD"
+      echo "Expected exactly one existing ${ARG} checksum in ${dockerfile}" >&2
+      return 1
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -E -i '' "s|^([[:space:]]*(ARG[[:space:]]+)?${ARG}=)\"?[[:xdigit:]]{64}\"?(.*)$|\\1\"${SHA}\"\\3|" "${dockerfile}"
+    else
+      sed -E -i "s|^([[:space:]]*(ARG[[:space:]]+)?${ARG}=)\"?[[:xdigit:]]{64}\"?(.*)$|\\1\"${SHA}\"\\3|" "${dockerfile}"
+    fi
+
+    if ! grep -Eq "^[[:space:]]*(ARG[[:space:]]+)?${ARG}=\"${SHA}\"" "${dockerfile}"; then
+      rm -f "$DOWNLOAD"
+      echo "Failed to update ${ARG} in ${dockerfile}" >&2
+      return 1
+    fi
+  done
+  rm -f "$DOWNLOAD"
 }
 
 update_readme() {
   local README="$1"
   local OLD_VERSION="$2"
   local NEW_VERSION="$3"
-  # update the README to specify the new version
-  if [ "$README" != "" ]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      sed -i '' "s/${OLD_VERSION}\.$/${NEW_VERSION}\./" "$README"
-    else
-      sed -i "s/${OLD_VERSION}\.$/${NEW_VERSION}\./" "$README"
-    fi
+  local match_count
+  local new_match_count
+  local replacement
+
+  if [ -z "$README" ]; then
+    return 0
+  fi
+  if [ ! -f "$README" ]; then
+    echo "Configured README does not exist: $README" >&2
+    return 1
+  fi
+
+  match_count=$(awk -v suffix="${OLD_VERSION}." '
+    length($0) >= length(suffix) && substr($0, length($0) - length(suffix) + 1) == suffix { count++ }
+    END { print count + 0 }
+  ' "$README")
+  if [ "$match_count" -ne 1 ]; then
+    echo "Expected exactly one README line ending in ${OLD_VERSION}. in ${README}; found ${match_count}" >&2
+    return 1
+  fi
+
+  replacement=$(mktemp)
+  if ! awk -v old_suffix="${OLD_VERSION}." -v new_suffix="${NEW_VERSION}." '
+    length($0) >= length(old_suffix) && substr($0, length($0) - length(old_suffix) + 1) == old_suffix {
+      print substr($0, 1, length($0) - length(old_suffix)) new_suffix
+      next
+    }
+    { print }
+  ' "$README" >"$replacement"; then
+    rm -f "$replacement"
+    echo "Failed to prepare README update for ${README}" >&2
+    return 1
+  fi
+  if cmp -s "$README" "$replacement"; then
+    rm -f "$replacement"
+    echo "README replacement did not change ${README}" >&2
+    return 1
+  fi
+  command cat "$replacement" >"$README"
+  rm -f "$replacement"
+
+  new_match_count=$(awk -v suffix="${NEW_VERSION}." '
+    length($0) >= length(suffix) && substr($0, length($0) - length(suffix) + 1) == suffix { count++ }
+    END { print count + 0 }
+  ' "$README")
+  if [ "$new_match_count" -ne 1 ]; then
+    echo "Failed to verify README version ${NEW_VERSION} in ${README}" >&2
+    return 1
   fi
 }
+
+if [ "${UPDATE_SHA_LIBRARY_ONLY:-false}" = "true" ]; then
+  if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    exit 0
+  fi
+  return 0
+fi
 
 echo "Updating SHA for $DEP@$NEW_VERSION"
 
@@ -50,6 +136,7 @@ if [ "$DEP" = "alpaca" ] ; then
   URL="https://github.com/islandora/alpaca/archive/refs/tags/${NEW_VERSION}.tar.gz"
   ARG=ALPACA_SHA256
   DOCKERFILES=("images/alpaca/Dockerfile")
+  README="images/alpaca/README.md"
 
 elif [ "$DEP" = "apache-tomcat9" ]; then
   URL="https://downloads.apache.org/tomcat/tomcat-9/v$NEW_VERSION/bin/apache-tomcat-$NEW_VERSION.tar.gz"
@@ -109,10 +196,19 @@ elif [ "$DEP" = "fcrepo7" ]; then
   DOCKERFILES=("images/fcrepo7/Dockerfile")
   README="images/fcrepo7/README.md"
 
-elif [ "$DEP" = "islandora-syn" ]; then
+elif [ "$DEP" = "islandora-syn-fcrepo6" ]; then
   URL="https://github.com/Islandora/Syn/releases/download/v${NEW_VERSION}/islandora-syn-${NEW_VERSION}-all.jar"
   ARG="SYN_SHA256"
-  DOCKERFILES=("images/fcrepo6/Dockerfile" "images/fcrepo7/Dockerfile")
+  DOCKERFILES=("images/fcrepo6/Dockerfile")
+
+elif [ "$DEP" = "islandora-syn-fcrepo7" ]; then
+  URL="https://github.com/Islandora/Syn/releases/download/v${NEW_VERSION}/islandora-syn-${NEW_VERSION}-all.jar"
+  ARG="SYN_SHA256"
+  DOCKERFILES=("images/fcrepo7/Dockerfile")
+
+elif [ "$DEP" = "islandora-syn" ]; then
+  echo "Use islandora-syn-fcrepo6 or islandora-syn-fcrepo7 so Syn major lines remain independent" >&2
+  exit 1
 
 elif [ "$DEP" = "fcrepo-import-export" ]; then
   URL="https://github.com/fcrepo-exts/fcrepo-import-export/releases/download/fcrepo-import-export-${NEW_VERSION}/fcrepo-import-export-${NEW_VERSION}.jar"
@@ -214,8 +310,8 @@ elif [ "$DEP" = "s6-overlay" ]; then
 
   exit 0
 else
-  echo "DEP not found"
-  exit 0
+  echo "Unsupported dependency: $DEP" >&2
+  exit 1
 fi
 
 update_dockerfile_sha "$URL" "$ARG" "${DOCKERFILES[@]}"

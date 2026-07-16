@@ -2,19 +2,15 @@
 # shellcheck shell=bash
 set -e
 
+# shellcheck disable=SC1091
+source /usr/local/share/libops/database.sh
+# shellcheck disable=SC1091
+source /usr/local/share/libops/environment.sh
+
 function mysql_create_database {
-    cat <<-EOF | create-database.sh
--- Create fcrepo database in mariadb or mysql.
-CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8 COLLATE utf8_general_ci;
-
--- Create fcrepo user and grant rights.
-CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* to '${DB_USER}'@'%';
-FLUSH PRIVILEGES;
-
--- Update fcrepo password if changed.
-SET PASSWORD FOR ${DB_USER}@'%' = PASSWORD('${DB_PASSWORD}')
-EOF
+    DB_CHARACTER_SET=utf8 \
+        DB_COLLATION=utf8_general_ci \
+        render-database-bootstrap-sql.sh | create-database.sh
 }
 
 function wait_for_broker {
@@ -32,7 +28,14 @@ function wait_for_broker {
 }
 
 function main {
-    mysql_create_database
+    require_environment_variables DB_HOST DB_NAME DB_USER DB_PASSWORD
+    if [ "${DB_HOST}" = "mariadb" ]; then
+        database_bootstrap_if_enabled mysql_create_database
+    fi
+    LIBOPS_DATABASE_PASSWORD="${DB_PASSWORD}" wait-for-database.sh \
+        --host "${DB_HOST}" \
+        --port "${DB_PORT}" \
+        --user "${DB_USER}"
     # When bind mounting we need to ensure that we
     # actually can write to the folder.
     chown tomcat:tomcat /data

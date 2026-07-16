@@ -27,10 +27,10 @@ RUN --mount=type=cache,id=activemq-downloads-${TARGETARCH},sharing=locked,target
 ENV \
     ACTIVEMQ_AUDIT_LOG_LEVEL=INFO \
     ACTIVEMQ_LOG_LEVEL=INFO \
-    ACTIVEMQ_PASSWORD=password \
+    ACTIVEMQ_PASSWORD= \
     ACTIVEMQ_USER=admin \
     ACTIVEMQ_WEB_ADMIN_NAME=admin \
-    ACTIVEMQ_WEB_ADMIN_PASSWORD=password \
+    ACTIVEMQ_WEB_ADMIN_PASSWORD= \
     ACTIVEMQ_WEB_ADMIN_ROLES=admin
 
 COPY --link rootfs /
@@ -38,8 +38,4 @@ COPY --link rootfs /
 RUN create-service-user.sh --name activemq && \
     cleanup.sh
 
-HEALTHCHECK CMD curl -s \
-    -u admin:"$(cat /var/run/s6/container_environment/ACTIVEMQ_WEB_ADMIN_PASSWORD)" \
-    -H origin:localhost \
-    "http://localhost:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=localhost,service=Health/CurrentStatus" \
-    | jq .value | grep -q Good
+HEALTHCHECK CMD activemq-healthcheck.sh

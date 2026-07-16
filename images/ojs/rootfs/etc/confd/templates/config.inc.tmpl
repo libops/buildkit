@@ -1,4 +1,5 @@
 {{- define "doubleQuoteEscape" -}}{{- $escaped := replace . "\\" "\\\\" -1 -}}{{- replace $escaped "\"" "\\\"" -1 -}}{{- end -}}
+{{- define "booleanOnOff" -}}{{- if or (eq . "1") (eq . "on") (eq . "On") (eq . "ON") (eq . "true") (eq . "True") (eq . "TRUE") (eq . "y") (eq . "Y") (eq . "yes") (eq . "Yes") (eq . "YES") -}}On{{- else -}}Off{{- end -}}{{- end -}}
 ; <?php exit; // DO NOT DELETE?>
 ; DO NOT DELETE THE ABOVE LINE!!!
 ; Doing so will expose this configuration file through your web site!
@@ -31,7 +32,7 @@ app_key = "{{ template "doubleQuoteEscape" (getenv "OJS_SECRET_KEY") }}"
 
 ; Set this to On once the system has been installed
 ; (This is generally done automatically by the installer)
-installed = Off
+installed = {{ template "booleanOnOff" (getenv "OJS_INSTALLED") }}
 
 ; The canonical URL to the OJS installation (excluding the trailing slash)
 {{ $base_url_ingress_hostnames := replace (getenv "INGRESS_HOSTNAMES") " " "" -1 }}
@@ -118,7 +119,7 @@ enable_minified = On
 
 ; Provide a unique site ID and OAI base URL to PKP for statistics and security
 ; alert purposes only.
-enable_beacon = {{ if getenv "OJS_ENABLE_BEACON" }}On{{ else }}Off{{ end }}
+enable_beacon = {{ template "booleanOnOff" (getenv "OJS_ENABLE_BEACON") }}
 
 ; Set this to "On" if you would like to only have a single, site-wide Privacy
 ; Statement, rather than a separate Privacy Statement for each journal. Setting
@@ -278,10 +279,10 @@ session_check_ip = On
 encryption = sha1
 
 ; The unique salt to use for generating password reset hashes
-salt = "{{ getenv "OJS_SALT" }}"
+salt = "{{ template "doubleQuoteEscape" (getenv "OJS_SALT") }}"
 
 ; The unique secret used for encoding and decoding API keys
-api_key_secret = "{{ getenv "OJS_API_KEY_SECRET" }}"
+api_key_secret = "{{ template "doubleQuoteEscape" (getenv "OJS_API_KEY_SECRET") }}"
 
 ; The number of seconds before a password reset hash expires (defaults to 7200 / 2 hours)
 reset_seconds = 7200

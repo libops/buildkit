@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+umask 077
 
 # Sets container environment variables in order of precedence depending on the
 # source:
@@ -63,9 +64,17 @@ fi
 # Normalize the container environment through confd's env backend. This can only
 # import values that are already defined in the environment.
 {
+    # shellcheck disable=SC2016 # Literal Go template; shell expansion is unwanted.
+    printf '%s\n' '{{ define "execlineEscape" -}}{{- $escaped := replace . "\\" "\\\\" -1 -}}{{- replace $escaped "\"" "\\\"" -1 -}}{{- end -}}'
     for file in /var/run/s6/container_environment/*; do
         VAR=$(basename "${file}")
         KEY=$(echo "${VAR}" | tr '[:upper:]' '[:lower:]' | tr '_' '/')
-        echo "${VAR}=\"{{ getv \"/${KEY}\" (getenv \"${VAR}\") }}\""
+        echo "${VAR}=\"{{ template \"execlineEscape\" (getv \"/${KEY}\" (getenv \"${VAR}\")) }}\""
     done
 } | /usr/local/bin/confd-import-environment.sh
+
+# These files can include database administrator and application credentials.
+# Startup scripts run as root and import them before dropping privileges, so
+# they do not need to be readable by application service users.
+chmod 0700 /var/run/s6/container_environment
+find /var/run/s6/container_environment -maxdepth 1 -type f -exec chmod 0600 {} +
