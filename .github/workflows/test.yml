@@ -17,6 +17,7 @@ on:
         type: boolean
         default: false
       build-images:
+        description: "JSON list of images available under the fallback tag"
         required: false
         type: string
         default: "[]"
