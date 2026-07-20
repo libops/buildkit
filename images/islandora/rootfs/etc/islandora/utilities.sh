@@ -300,69 +300,6 @@ function set_carapace_default_theme {
     drush -l "${site_url}" -y config:set system.theme default carapace
 }
 
-# Generate solr config using the search_api_solr module.
-#
-# Assumes the search_api_solr module has already been installed.
-# Assumes that the destination will be a shared volume.
-function generate_solr_config {
-    # renovate: datasource=custom.apache-downloads depName=apache-solr packageName=solr/solr
-    local SOFTWARE_VERSION=9.10.1
-    local site site_url core dest
-    site="${1}"
-    shift
-    site_url=$(drupal_site_env "${site}" "SITE_URL")
-    core=$(drupal_site_env "${site}" "SOLR_CORE")
-    dest="${1-/opt/solr/server/solr/${core}}"
-
-    mkdir -p "/tmp/${core}" || true
-    chmod a+rwx "/tmp/${core}"
-    if ! drush -l "${site_url}" -y search-api-solr:get-server-config default_solr_server "/tmp/${core}/solr_config.zip" "${SOFTWARE_VERSION}"; then
-        echo -e "\n\nERROR: Could not generate SOLR config.zip!\nIn Drupal, check Configuration -> Search API -> SOLR Server, and use the\n"+ Get config.zip" option which should give you information into the actual error.\n\n"
-        return 1
-    fi
-    mkdir -p "${dest}/conf" || true
-    mkdir -p "${dest}/data" || true
-    unzip -o "/tmp/${core}/solr_config.zip" -d "${dest}/conf"
-
-    # The uid:gid "100:1000" is "solr:solr" inside of the solr container.
-    chown -R 100:1000 "${dest}"
-}
-
-# Creates a SOLR core for the site using the Solr REST API.
-function create_solr_core {
-    local site core host port status
-    site="${1}"
-    shift
-    core=$(drupal_site_env "${site}" "SOLR_CORE")
-    host=$(drupal_site_env "${site}" "SOLR_HOST")
-    port=$(drupal_site_env "${site}" "SOLR_PORT")
-
-    # Require a running Solr to create a core.
-    wait_for_service "${site}" "SOLR"
-
-    status=$(curl -fsS "http://${host}:${port}/solr/admin/cores?action=STATUS&core=${core}&indexInfo=false&wt=json")
-    if jq -e --arg core "${core}" '.status[$core] != null and (.status[$core] | length > 0)' <<<"${status}" >/dev/null; then
-        echo "Solr core ${core} already exists."
-        return 0
-    fi
-
-    curl -s "http://${host}:${port}/solr/admin/cores?action=CREATE&name=${core}&instanceDir=${core}&config=solrconfig.xml&dataDir=data"
-}
-
-# Generate solr config and create a core for it.
-function create_solr_core_with_default_config {
-    local site
-    if ! drush pm-list --format=string --type=module --status=enabled --no-core | grep -q search_api_solr; then
-        echo "search_api_solr is not installed.  Skipping core setup."
-        return 0
-    fi
-
-    site="${1}"
-    shift
-    generate_solr_config "${site}" || return 1
-    create_solr_core "${site}"
-}
-
 # Configure Openseadragon to point use cantaloupe.
 function configure_openseadragon {
     local site site_url cantaloupe_url
