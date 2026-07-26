@@ -246,7 +246,7 @@ elif [ "$DEP" = "omeka-classic" ]; then
   DOCKERFILES=("images/omeka-classic/Dockerfile")
 
 elif [ "$DEP" = "archivesspace" ]; then
-  URL="https://github.com/archivesspace/archivesspace/releases/download/v${NEW_VERSION}/archivesspace-v${NEW_VERSION}.zip"
+  URL="https://github.com/archivesspace/archivesspace/releases/download/${NEW_VERSION}/archivesspace-${NEW_VERSION}.zip"
   ARG="ARCHIVESSPACE_SHA256"
   DOCKERFILES=("images/archivesspace/Dockerfile" "images/archivesspace-solr/Dockerfile")
 
