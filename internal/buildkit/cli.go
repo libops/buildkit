@@ -16,6 +16,8 @@ func Run(root string, args []string, stdout, stderr io.Writer) int {
 		return RunMetadata(root, args[1:], stdout, stderr)
 	case "test":
 		return RunTests(root, args[1:], stdout, stderr)
+	case "template-test":
+		return RunTemplateTests(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		printUsage(stdout)
 		return 0
@@ -33,6 +35,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, `Usage:
   buildkit metadata <command> [args...]
   buildkit test [flags]
+  buildkit template-test --root PATH [--root PATH ...]
 
 Metadata commands match ci/image-metadata.sh:
   list

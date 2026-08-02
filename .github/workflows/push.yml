@@ -214,7 +214,7 @@ jobs:
           sitectl_drupal_create_args="$(coordinated_template_args https://github.com/libops/drupal)"
           sitectl_isle_template_args="$(coordinated_template_args https://github.com/libops/isle)"
           if [ -z "${sitectl_isle_template_args}" ]; then
-            sitectl_isle_template_args="--template-repo https://github.com/libops/isle"
+            sitectl_isle_template_args="--template-repo https://github.com/libops/isle --template-branch main"
           fi
           sitectl_isle_create_args="${sitectl_isle_template_args} --fcrepo off --blazegraph off --isle-file-system-uri private --iiif triplet --iiif-topology disabled --bot-mitigation off"
           sitectl_repository=""
@@ -440,7 +440,7 @@ jobs:
       contents: read
       packages: read
 
-  test-level-4:
+  test-level-4-matrix:
     if: ${{ always() && needs.plan.outputs.test_level4 != '[]' && !cancelled() && !failure() }}
     needs: [plan, build-level-4]
     strategy:
@@ -458,6 +458,20 @@ jobs:
       contents: read
       packages: read
 
+  test-level-4:
+    if: ${{ always() }}
+    needs: [test-level-4-matrix]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify level-4 matrix
+        env:
+          RESULT: ${{ needs.test-level-4-matrix.result }}
+        run: |
+          if [[ "${RESULT}" != "success" && "${RESULT}" != "skipped" ]]; then
+            echo "Level-4 matrix result: ${RESULT}" >&2
+            exit 1
+          fi
+
   sitectl-create-smoke-test:
     if: ${{ always() && needs.plan.outputs.sitectl_create_smoke_matrix != '[]' && !cancelled() && !failure() }}
     needs: [plan, test-level-0, test-level-1, test-level-2, test-level-3, test-level-4]
@@ -470,7 +484,7 @@ jobs:
     with:
       plugin: ${{ matrix.plugin }}
       create-definition: default
-      create-args: ${{ matrix.create-args }}
+      create-args: --yolo ${{ matrix.create-args }}
       checkout-source: template
       project-path: generated-${{ matrix.plugin }}
       image-tags: ${{ matrix.image-tags }}

@@ -74,14 +74,15 @@ TARGET_IMAGES = $(shell docker buildx bake --print $(TARGET) 2>/dev/null | jq -r
 TEST_IMAGE ?= $(if $(filter default,$(TARGET)),,$(TARGET))
 TEST_MODE ?= fallback
 TEST_ARGS ?=
+TEMPLATE_ROOTS ?=
 
 build:
 	mkdir -p build
 
-# This is a catch all target that is used to check for existance of an
-# executable when declared as a dependency.
-.PHONY: %
-%:
+# Executable prerequisites are explicit so a misspelled target retains Make's
+# useful "No rule to make target" error.
+.PHONY: docker jq login
+docker jq login:
 	$(call executable-exists,$@)
 
 # Prior to building, all folders which might be copied into Docker images must
@@ -96,8 +97,8 @@ folder-permissions:
 # have the executable bit set for all users. So that they can be executed by
 # the users we create like 'nginx'. We can not insure this via Git as it does
 # not track executable permissions for "groups" or "others".
-.PHONY: executable-permissons
-executable-permissons:
+.PHONY: executable-permissions
+executable-permissions:
 	find images -type f \
     \( \
       -name "*.sh" \
@@ -126,7 +127,7 @@ docker-buildx: | docker
 # Despite being a real target we make it PHONY so it is run everytime as $(TARGET) can change.
 .PHONY: build/bake.json
 .SILENT: build/bake.json
-build/bake.json: | docker-buildx jq build folder-permissions executable-permissons
+build/bake.json: | docker-buildx jq build folder-permissions executable-permissions
 	set -x; \
 		BRANCH="$(BRANCH)" \
 	CACHE_FROM_REPOSITORY=$(CACHE_FROM_REPOSITORY) \
@@ -180,6 +181,19 @@ list-tests:
 	$(GO) run ./cmd/buildkit test --list \
 		$(if $(TEST_IMAGE),--image $(TEST_IMAGE),) \
 		$(if $(TEST),--test $(TEST),)
+
+.PHONY: template-test
+## Runs retained smoke tests from one or more Compose template checkouts.
+template-test:
+	@if [ -z "$(GO)" ]; then printf "Go is required to run template tests.\n"; exit 127; fi
+	@if [ -z "$(strip $(TEMPLATE_ROOTS))" ]; then printf "Set TEMPLATE_ROOTS to one or more template checkout paths.\n"; exit 2; fi
+	$(GO) run ./cmd/buildkit template-test $(foreach root,$(TEMPLATE_ROOTS),--root "$(root)") --keep-going
+
+.PHONY: template-check
+## Checks canonical template filenames and cross-template image digest parity.
+template-check:
+	@if [ -z "$(strip $(TEMPLATE_ROOTS))" ]; then printf "Set TEMPLATE_ROOTS to one or more template checkout paths.\n"; exit 2; fi
+	$(GO) run ./cmd/buildkit template-test $(foreach root,$(TEMPLATE_ROOTS),--root "$(root)") --check-only
 
 .PHONY: push
 ## Builds and pushes the target(s) into remote repository.

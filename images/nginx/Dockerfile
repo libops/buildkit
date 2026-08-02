@@ -7,7 +7,7 @@ ARG PHP_FPM_SOCKET=/run/php-fpm/php-fpm.sock
 
 ARG \
     # renovate: datasource=repology depName=alpine_3_24/nginx
-    NGINX_VERSION=1.30.3-r0
+    NGINX_VERSION=1.30.4-r1
 
 EXPOSE 80
 

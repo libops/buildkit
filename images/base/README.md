@@ -11,6 +11,10 @@ It's based off off [Alpine Linux], and includes [s6 overlay] and [confd].
 
 Requires `alpine` version is set in [docker-bake.hcl](../docker-bake.hcl).
 
+The `libops/base` image tag follows the bundled s6-overlay release (for example,
+`3.2.2.0`). It identifies the base process/runtime contract, not an application
+version; consumers should continue pinning the image digest.
+
 ## Settings
 
 ### Confd Settings

@@ -80,4 +80,4 @@ ENV \
 
 COPY --link rootfs /
 
-HEALTHCHECK CMD curl -fsS http://localhost/status | grep -q pool
+HEALTHCHECK CMD test -f /installed && curl -fsS http://localhost/status | grep -q pool

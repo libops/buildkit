@@ -898,6 +898,55 @@ func TestPublishedBaseImageRefreshesPackageMetadata(t *testing.T) {
 	}
 }
 
+func TestPushWorkflowPublishesRequiredLevelFourGate(t *testing.T) {
+	root := repoRoot(t)
+	workflowPath := filepath.Join(root, ".github", "workflows", "push.yml")
+	workflow, err := os.ReadFile(workflowPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", workflowPath, err)
+	}
+	for _, required := range []string{
+		"  test-level-4-matrix:\n",
+		"  test-level-4:\n",
+		"    needs: [test-level-4-matrix]\n",
+		"          RESULT: ${{ needs.test-level-4-matrix.result }}\n",
+	} {
+		if !strings.Contains(string(workflow), required) {
+			t.Errorf("%s must contain required level-4 gate contract %q", workflowPath, required)
+		}
+	}
+}
+
+func TestBaseOwnsSharedComposeInitializationTools(t *testing.T) {
+	root := repoRoot(t)
+	for _, name := range []string{"init-database.sh", "generate-compose-secrets.sh", "generate-certs.sh"} {
+		path := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "bin", name)
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("shared initialization tool %s is missing: %v", name, err)
+		}
+		if info.Mode().Perm()&0o111 == 0 {
+			t.Errorf("shared initialization tool %s is not executable", name)
+		}
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read shared initialization tool %s: %v", name, err)
+		}
+		if !strings.HasPrefix(string(contents), "#!/usr/bin/env bash\n") {
+			t.Errorf("shared initialization tool %s must run without an initialized s6 environment", name)
+		}
+	}
+	secrets, err := os.ReadFile(filepath.Join(root, "images", "base", "rootfs", "usr", "local", "bin", "generate-compose-secrets.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{".secrets // {}", "SECRET_FORMAT_", "laravel-base64", "salt74", "openssl rand"} {
+		if !strings.Contains(string(secrets), required) {
+			t.Errorf("canonical secret generator must contain %q", required)
+		}
+	}
+}
+
 func TestMarketedApplicationImagesDoNotShipKnownCredentials(t *testing.T) {
 	root := repoRoot(t)
 	images := []string{"archivesspace", "drupal", "ojs", "omeka-s", "omeka-classic", "wp"}
