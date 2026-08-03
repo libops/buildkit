@@ -34,9 +34,9 @@ if [ ! -s "${LEAF_CERT}" ]; then
     -set_serial "0x$(openssl rand -hex 16)" -out "${LEAF_CERT}" -days 825 -extfile "${workdir}/leaf.ext"
 fi
 chmod 0644 "${LEAF_CERT}"
-if [ -n "${HOST_UID:-}" ]; then
-  printf '%s\n' "${HOST_UID}" >"${CERT_DIR}/UID"
-  chmod 0644 "${CERT_DIR}/UID"
-  chown -R "${HOST_UID}:${HOST_GID:-${HOST_UID}}" "${CERT_DIR}"
-fi
+owner_uid="${HOST_UID:-$(stat -c %u -- "${CERT_DIR}")}"
+owner_gid="${HOST_GID:-$(stat -c %g -- "${CERT_DIR}")}"
+printf '%s\n' "${owner_uid}" >"${CERT_DIR}/UID"
+chmod 0644 "${CERT_DIR}/UID"
+chown -R "${owner_uid}:${owner_gid}" "${CERT_DIR}"
 echo "Development certificates are ready in ${CERT_DIR}."

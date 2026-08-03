@@ -49,6 +49,6 @@ while IFS=$'\t' read -r name declared; do
   chmod 0600 "${path}"
 done < <(yq -r '(.secrets // {}) | to_entries[] | select(.value.file != null) | [.key, .value.file] | @tsv' "${COMPOSE_FILE}")
 
-if [ -n "${HOST_UID:-}" ]; then
-  chown -R "${HOST_UID}:${HOST_GID:-${HOST_UID}}" "${SECRETS_ROOT}"
-fi
+owner_uid="${HOST_UID:-$(stat -c %u -- "${SECRETS_ROOT}")}"
+owner_gid="${HOST_GID:-$(stat -c %g -- "${SECRETS_ROOT}")}"
+chown -R "${owner_uid}:${owner_gid}" "${SECRETS_ROOT}"
