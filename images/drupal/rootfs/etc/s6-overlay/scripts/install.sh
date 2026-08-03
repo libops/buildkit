@@ -52,22 +52,40 @@ function drush_cache_setup {
 }
 
 function install_site {
-    local existing_config_arg=()
-    if [[ "${DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG}" == "true" ]]; then
-        existing_config_arg=("--existing-config")
-    fi
+    local db_url
 
-    DRUSH_COMMAND_SITE_INSTALL_OPTIONS_ACCOUNT_PASS="${DRUPAL_DEFAULT_ACCOUNT_PASSWORD}" drush \
+    # A fresh site has no bootstrapped settings yet. Pass the database through
+    # Drush's command environment to keep its password out of process arguments.
+    db_url="mysql://$(php -r 'echo rawurlencode(getenv("DB_USER"));')"
+    db_url+=":$(php -r 'echo rawurlencode(getenv("DB_PASSWORD"));')"
+    db_url+="@${DB_HOST}:${DB_PORT}/$(php -r 'echo rawurlencode(getenv("DB_NAME"));')"
+
+    DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL="${db_url}" \
+        DRUSH_COMMAND_SITE_INSTALL_OPTIONS_ACCOUNT_PASS="${DRUPAL_DEFAULT_ACCOUNT_PASSWORD}" drush \
         -n \
         -r /var/www/drupal/web \
         site:install "${DRUPAL_DEFAULT_PROFILE}" \
-        "${existing_config_arg[@]}" \
         --sites-subdir="${DRUPAL_DEFAULT_SUBDIR}" \
         --site-name="${DRUPAL_DEFAULT_NAME}" \
         --site-mail="${DRUPAL_DEFAULT_EMAIL}" \
         --account-name="${DRUPAL_DEFAULT_ACCOUNT_NAME}" \
         --account-mail="${DRUPAL_DEFAULT_ACCOUNT_EMAIL}" \
         --locale="${DRUPAL_DEFAULT_LOCALE}"
+
+    if [[ "${DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG}" == "true" ]]; then
+        local source_uuid
+        source_uuid="$(yq -r '.uuid // ""' "${DRUPAL_DEFAULT_CONFIGDIR}/system.site.yml")"
+        if [[ -z "${source_uuid}" ]]; then
+            echo "Existing configuration has no site UUID" >&2
+            return 1
+        fi
+        drush -n -r /var/www/drupal/web config:set system.site uuid \
+            "${source_uuid}" --uri="$(drush_uri)" --yes
+        drush -n -r /var/www/drupal/web config:import \
+            --source="${DRUPAL_DEFAULT_CONFIGDIR}" \
+            --uri="$(drush_uri)" \
+            --yes
+    fi
 }
 
 function run_install_hooks {
