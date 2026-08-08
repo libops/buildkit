@@ -1250,6 +1250,7 @@ func TestDrupalInstallersKeepDatabasePasswordsOutOfArguments(t *testing.T) {
 	primary := filepath.Join(root, "images", "drupal", "rootfs", "etc", "s6-overlay", "scripts", "install.sh")
 	helper := filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "bin", "install-drupal-site.sh")
 	islandora := filepath.Join(root, "images", "islandora", "rootfs", "etc", "islandora", "utilities.sh")
+	encoder := filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "share", "libops", "drupal-uri-encode.php")
 
 	for _, file := range []string{primary, helper, islandora} {
 		content, err := os.ReadFile(file)
@@ -1270,12 +1271,71 @@ func TestDrupalInstallersKeepDatabasePasswordsOutOfArguments(t *testing.T) {
 	}
 	got := string(helperContent)
 	for _, want := range []string{
-		`rawurlencode((string) getenv("LIBOPS_DRUPAL_URI_COMPONENT"))`,
+		`/usr/local/share/libops/drupal-uri-encode.php`,
 		`DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL="${drush_database_url}"`,
 		`DB_PASSWORD=${LIBOPS_DRUPAL_INSTALL_DB_PASSWORD:-}`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%s missing %q", helper, want)
+		}
+	}
+
+	encoderContent, err := os.ReadFile(encoder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoderContent), `rawurlencode((string) getenv('LIBOPS_DRUPAL_URI_COMPONENT'))`) {
+		t.Errorf("%s must URI-encode the environment-provided component", encoder)
+	}
+}
+
+func TestRuntimePHPProgramsAreCheckedIn(t *testing.T) {
+	root := repoRoot(t)
+	cases := []struct {
+		launcher   string
+		program    string
+		invocation string
+	}{
+		{
+			launcher:   "images/drupal/rootfs/etc/s6-overlay/scripts/install.sh",
+			program:    "images/drupal/rootfs/usr/local/share/libops/drupal-uri-encode.php",
+			invocation: "/usr/local/share/libops/drupal-uri-encode.php",
+		},
+		{
+			launcher:   "images/drupal/rootfs/usr/local/bin/install-drupal-site.sh",
+			program:    "images/drupal/rootfs/usr/local/share/libops/drupal-uri-encode.php",
+			invocation: "/usr/local/share/libops/drupal-uri-encode.php",
+		},
+		{
+			launcher:   "images/islandora/rootfs/etc/islandora/utilities.sh",
+			program:    "images/islandora/rootfs/etc/islandora/config-sync-directory.php",
+			invocation: "php:script /etc/islandora/config-sync-directory.php",
+		},
+		{
+			launcher:   "images/wp/rootfs/etc/s6-overlay/scripts/wordpress-setup.sh",
+			program:    "images/wp/rootfs/usr/local/share/libops/wordpress-home.php",
+			invocation: "php /usr/local/share/libops/wordpress-home.php",
+		},
+	}
+
+	for _, tt := range cases {
+		launcher, err := os.ReadFile(filepath.Join(root, tt.launcher))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(launcher)
+		if strings.Contains(got, "php -r") || strings.Contains(got, "php:eval") {
+			t.Errorf("%s embeds PHP instead of invoking a checked-in program", tt.launcher)
+		}
+		if !strings.Contains(got, tt.invocation) {
+			t.Errorf("%s does not invoke checked-in program %s", tt.launcher, tt.program)
+		}
+		program, err := os.ReadFile(filepath.Join(root, tt.program))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(string(program), "<?php\n") {
+			t.Errorf("%s is not a PHP program", tt.program)
 		}
 	}
 }
@@ -1313,6 +1373,7 @@ printf '%s\n' "${DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL}" >"${DRUSH_OUTPUT}"
 	)
 	command.Env = append(os.Environ(),
 		"PATH="+binDir+":"+os.Getenv("PATH"),
+		"LIBOPS_DRUPAL_URI_ENCODER="+filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "share", "libops", "drupal-uri-encode.php"),
 		"LIBOPS_DRUPAL_INSTALL_DB_PASSWORD="+rawPassword,
 		"EXPECTED_RAW_PASSWORD="+rawPassword,
 		"DRUSH_OUTPUT="+outputFile,

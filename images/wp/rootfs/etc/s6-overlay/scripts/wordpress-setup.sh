@@ -57,7 +57,7 @@ function check_wordpress_installed {
 }
 
 function wordpress_home {
-    php -r 'require "/var/www/bedrock/config/libops-runtime.php"; echo WP_HOME;'
+    php /usr/local/share/libops/wordpress-home.php
 }
 
 function install_wordpress {

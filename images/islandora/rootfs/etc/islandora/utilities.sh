@@ -366,7 +366,7 @@ function set_site_uuid {
     site_url=$(drupal_site_env "${site}" "SITE_URL")
     drupal_root=/var/www/drupal/web
     # Handle the case if config_dir is a relative path.
-    config_dir=$(realpath "$(drush --root="${drupal_root}" php:eval "echo \Drupal\Core\Site\Settings::get('config_sync_directory');")")
+    config_dir=$(realpath "$(drush --root="${drupal_root}" php:script /etc/islandora/config-sync-directory.php)")
     uuid=$(awk '/uuid/ { print $2 }' "${config_dir:?}/system.site.yml")
     drush -l "${site_url}" -y config:set --input-format=yaml system.site uuid "${uuid}"
 }

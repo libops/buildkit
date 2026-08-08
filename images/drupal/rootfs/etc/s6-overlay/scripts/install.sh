@@ -78,14 +78,19 @@ function drush_cache_setup {
     chmod a+rwx /tmp/drush-/cache
 }
 
+function uri_encode {
+    LIBOPS_DRUPAL_URI_COMPONENT="$1" \
+        php "${LIBOPS_DRUPAL_URI_ENCODER:-/usr/local/share/libops/drupal-uri-encode.php}"
+}
+
 function install_site {
     local db_url
 
     # A fresh site has no bootstrapped settings yet. Pass the database through
     # Drush's command environment to keep its password out of process arguments.
-    db_url="mysql://$(php -r 'echo rawurlencode(getenv("DB_USER"));')"
-    db_url+=":$(php -r 'echo rawurlencode(getenv("DB_PASSWORD"));')"
-    db_url+="@${DB_HOST}:${DB_PORT}/$(php -r 'echo rawurlencode(getenv("DB_NAME"));')"
+    db_url="mysql://$(uri_encode "${DB_USER}")"
+    db_url+=":$(uri_encode "${DB_PASSWORD}")"
+    db_url+="@${DB_HOST}:${DB_PORT}/$(uri_encode "${DB_NAME}")"
 
     DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL="${db_url}" \
         DRUSH_COMMAND_SITE_INSTALL_OPTIONS_ACCOUNT_PASS="${DRUPAL_DEFAULT_ACCOUNT_PASSWORD}" drush \
