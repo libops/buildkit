@@ -9,10 +9,19 @@ services:
   # Serve test files over HTTP
   nginx:
     image: nginx:stable-alpine
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/test-image.jpg"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+      start_period: 1s
     volumes:
       - ./fixtures:/usr/share/nginx/html
   hypercube:
     image: ${HYPERCUBE:-libops/hypercube:local}
+    depends_on:
+      nginx:
+        condition: service_healthy
     environment:
       JWT_ADMIN_TOKEN: test_token
     volumes:
