@@ -1348,19 +1348,19 @@ func TestGenericDrupalInstallerEncodesDatabaseURLWithoutArgumentExposure(t *test
 	rawPassword := `p"a\ss'word&+=:/?#%`
 
 	executeSQL := filepath.Join(binDir, "execute-sql-file.sh")
-	if err := os.WriteFile(executeSQL, []byte("#!/bin/sh\nprintf '0\\n'\n"), 0o755); err != nil {
+	executeSQLScript, err := os.ReadFile(filepath.Join(root, "internal", "buildkit", "testdata", "execute-sql-zero.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(executeSQL, executeSQLScript, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	drush := filepath.Join(binDir, "drush")
-	drushScript := `#!/bin/sh
-for argument do
-  case "${argument}" in
-    *"${EXPECTED_RAW_PASSWORD}"*) exit 42 ;;
-  esac
-done
-printf '%s\n' "${DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL}" >"${DRUSH_OUTPUT}"
-`
-	if err := os.WriteFile(drush, []byte(drushScript), 0o755); err != nil {
+	drushScript, err := os.ReadFile(filepath.Join(root, "internal", "buildkit", "testdata", "drush-db-url-stub.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(drush, drushScript, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
