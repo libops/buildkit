@@ -15,7 +15,7 @@ function mysql_create_database {
 }
 
 function wp_cli {
-    wp --allow-root --path=/var/www/bedrock/web/wp "$@"
+    s6-setuidgid nginx wp --path=/var/www/bedrock/web/wp "$@"
 }
 
 function wait_for_wordpress_files {
