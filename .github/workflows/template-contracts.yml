@@ -1,6 +1,26 @@
 name: Template contracts
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/template-contracts.yml"
+      - "cmd/buildkit/**"
+      - "internal/buildkit/template_test_runner*"
+      - "internal/buildkit/template_workflow_contract_test.go"
+      - "go.mod"
+      - "go.sum"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/template-contracts.yml"
+      - "cmd/buildkit/**"
+      - "internal/buildkit/template_test_runner*"
+      - "internal/buildkit/template_workflow_contract_test.go"
+      - "go.mod"
+      - "go.sum"
+  schedule:
+    - cron: "17 7 * * 1"
   workflow_dispatch:
     inputs:
       smoke:
@@ -32,6 +52,8 @@ jobs:
           set -euo pipefail
           for repository in archivesspace drupal isle ojs omeka-classic omeka-s wp; do
             git clone --depth 1 "https://github.com/libops/${repository}.git" "templates/${repository}"
+            commit="$(git -C "templates/${repository}" rev-parse HEAD)"
+            printf -- '- `%s`: `%s`\n' "${repository}" "${commit}" >> "${GITHUB_STEP_SUMMARY}"
           done
 
       - name: Check contracts and image pins
@@ -44,7 +66,7 @@ jobs:
           --root ../templates/wp
 
       - name: Run template smoke tests
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.smoke }}
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.smoke) }}
         working-directory: buildkit
         run: >-
           go run ./cmd/buildkit template-test --keep-going
