@@ -173,17 +173,7 @@ jobs:
                 --arg local_plugin_repository "$local_plugin_repository" \
                 --arg local_plugin_ref "$local_plugin_ref" \
                 --arg local_plugin_path "$local_plugin_path" \
-                '. + [{
-                  "plugin": $plugin,
-                  "packages": $packages,
-                  "package-versions": $package_versions,
-                  "create-args": $create_args,
-                  "image-tags": $image_tags,
-                  "images": $images,
-                  "local-plugin-repository": $local_plugin_repository,
-                  "local-plugin-ref": $local_plugin_ref,
-                  "local-plugin-path": $local_plugin_path
-                }]' <<<"$smoke_matrix"
+                --from-file ci/append-smoke-row.jq <<<"$smoke_matrix"
             )"
           }
 
