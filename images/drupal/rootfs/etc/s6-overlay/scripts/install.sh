@@ -46,6 +46,33 @@ function setup_directories {
     chmod ug+rw "${site_directory}" "${public_files_directory}" "${private_files_directory}" "${twig_cache_directory}"
 }
 
+function ensure_runtime_settings {
+    local core_settings defaults_file drupal_root marker settings_file site_directory
+    drupal_root="${DRUPAL_ROOT:-/var/www/drupal}"
+    site_directory="${drupal_root}/web/sites/${DRUPAL_DEFAULT_SUBDIR}"
+    settings_file="${site_directory}/settings.php"
+    core_settings="${drupal_root}/web/core/assets/scaffold/files/default.settings.php"
+    defaults_file="${DRUPAL_DEFAULT_SETTINGS_FILE:-/usr/share/drupal/default_settings.txt}"
+    marker="require '/etc/drupal/libops.settings.php';"
+
+    if [ ! -f "${settings_file}" ]; then
+        if [ ! -f "${core_settings}" ]; then
+            echo "Drupal core settings template is missing: ${core_settings}" >&2
+            return 1
+        fi
+        install -m 0644 "${core_settings}" "${settings_file}"
+    fi
+    if grep -Fq "${marker}" "${settings_file}"; then
+        return 0
+    fi
+    if [ ! -f "${defaults_file}" ]; then
+        echo "LibOps Drupal runtime settings are missing: ${defaults_file}" >&2
+        return 1
+    fi
+    printf '\n' >>"${settings_file}"
+    cat "${defaults_file}" >>"${settings_file}"
+}
+
 function drush_cache_setup {
     mkdir -p /tmp/drush-/cache
     chmod a+rwx /tmp/drush-/cache
@@ -152,6 +179,7 @@ function main {
     cd /var/www/drupal
     drush_cache_setup
     setup_directories
+    ensure_runtime_settings
     if [ "${DB_HOST}" = "mariadb" ]; then
         database_bootstrap_if_enabled mysql_create_database
     fi

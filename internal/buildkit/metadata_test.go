@@ -1174,6 +1174,46 @@ if grep -Fq "${DB_NAME}" <<<"${query}"; then exit 1; fi
 	}
 }
 
+func TestDrupalInstallerRestoresRuntimeSettingsOnce(t *testing.T) {
+	root := repoRoot(t)
+	library := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "database.sh")
+	environmentLibrary := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "environment.sh")
+	setup := filepath.Join(root, "images", "drupal", "rootfs", "etc", "s6-overlay", "scripts", "install.sh")
+	drupalRoot := t.TempDir()
+	settingsDirectory := filepath.Join(drupalRoot, "web", "sites", "default")
+	if err := os.MkdirAll(settingsDirectory, 0o755); err != nil {
+		t.Fatalf("create Drupal settings directory: %v", err)
+	}
+	settingsPath := filepath.Join(settingsDirectory, "settings.php")
+	if err := os.WriteFile(settingsPath, []byte("<?php\n"), 0o644); err != nil {
+		t.Fatalf("write Drupal settings fixture: %v", err)
+	}
+	defaultsPath := filepath.Join(t.TempDir(), "default_settings.txt")
+	defaults := "$settings['file_private_path'] = '/var/www/drupal/private/';\nrequire '/etc/drupal/libops.settings.php';\n"
+	if err := os.WriteFile(defaultsPath, []byte(defaults), 0o644); err != nil {
+		t.Fatalf("write LibOps settings fixture: %v", err)
+	}
+
+	harness := `
+set -euo pipefail
+export DRUPAL_SETUP_LIBRARY_ONLY=true
+export LIBOPS_DATABASE_LIBRARY="$1"
+export LIBOPS_ENVIRONMENT_LIBRARY="$2"
+export DRUPAL_ROOT="$4"
+export DRUPAL_DEFAULT_SETTINGS_FILE="$5"
+export DRUPAL_DEFAULT_SUBDIR=default
+source "$3"
+ensure_runtime_settings
+ensure_runtime_settings
+test "$(grep -Fc "require '/etc/drupal/libops.settings.php';" "$4/web/sites/default/settings.php")" -eq 1
+grep -Fq "file_private_path" "$4/web/sites/default/settings.php"
+`
+	command := exec.Command("bash", "-c", harness, "bash", library, environmentLibrary, setup, drupalRoot, defaultsPath)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("Drupal runtime settings recovery test failed: %v\n%s", err, output)
+	}
+}
+
 func TestCommandHelpersDoNotEvalArguments(t *testing.T) {
 	root := repoRoot(t)
 	files := []string{
