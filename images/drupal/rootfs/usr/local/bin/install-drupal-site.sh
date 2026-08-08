@@ -116,7 +116,8 @@ function mysql_count {
 }
 
 function uri_encode {
-    LIBOPS_DRUPAL_URI_COMPONENT="$1" php -r 'echo rawurlencode((string) getenv("LIBOPS_DRUPAL_URI_COMPONENT"));'
+    LIBOPS_DRUPAL_URI_COMPONENT="$1" \
+        php "${LIBOPS_DRUPAL_URI_ENCODER:-/usr/local/share/libops/drupal-uri-encode.php}"
 }
 
 function database_url {

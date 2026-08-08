@@ -14,7 +14,11 @@ func TestRunTemplateTests(t *testing.T) {
 	if err := os.MkdirAll(scripts, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(scripts, "test.sh"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+	testProgram, err := os.ReadFile(filepath.Join(repoRoot(t), "internal", "buildkit", "testdata", "template-test-pass.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(scripts, "test.sh"), testProgram, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "compose.yaml"), []byte("services: {}\n"), 0o644); err != nil {

@@ -1012,24 +1012,8 @@ func TestOJSSetupInstallsAgainstExternalDatabaseHost(t *testing.T) {
 	library := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "database.sh")
 	environmentLibrary := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "environment.sh")
 	setup := filepath.Join(root, "images", "ojs", "rootfs", "etc", "s6-overlay", "scripts", "ojs-setup.sh")
-	harness := `
-set -euo pipefail
-export OJS_SETUP_LIBRARY_ONLY=true
-export LIBOPS_DATABASE_LIBRARY="$1"
-export LIBOPS_ENVIRONMENT_LIBRARY="$2"
-source "$3"
-calls=$(mktemp)
-mysql_create_database() { printf 'bootstrap\n' >>"${calls}"; }
-wait_for_database() { printf 'wait\n' >>"${calls}"; }
-check_ojs_installed() { printf 'check\n' >>"${calls}"; return 1; }
-install_ojs() { printf 'install\n' >>"${calls}"; }
-export DB_HOST=external-database.example
-export DB_BOOTSTRAP_ENABLED=false
-export OJS_ADMIN_PASSWORD=test-admin-password
-setup_ojs_database
-test "$(cat "${calls}")" = $'wait\ncheck\ninstall'
-`
-	command := exec.Command("bash", "-c", harness, "bash", library, environmentLibrary, setup)
+	harness := filepath.Join(root, "internal", "buildkit", "testdata", "ojs-external-database.sh")
+	command := exec.Command("bash", harness, library, environmentLibrary, setup)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("external database setup stub failed: %v\n%s", err, output)
 	}
@@ -1157,18 +1141,8 @@ func TestDrupalInstalledQueryDoesNotInterpolateDatabaseName(t *testing.T) {
 	library := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "database.sh")
 	environmentLibrary := filepath.Join(root, "images", "base", "rootfs", "usr", "local", "share", "libops", "environment.sh")
 	setup := filepath.Join(root, "images", "drupal", "rootfs", "etc", "s6-overlay", "scripts", "install.sh")
-	harness := `
-set -euo pipefail
-export DRUPAL_SETUP_LIBRARY_ONLY=true
-export LIBOPS_DATABASE_LIBRARY="$1"
-export LIBOPS_ENVIRONMENT_LIBRARY="$2"
-export DB_NAME="external-db-'quoted"
-source "$3"
-query=$(mysql_count_query)
-grep -Fq 'WHERE table_schema = DATABASE();' <<<"${query}"
-if grep -Fq "${DB_NAME}" <<<"${query}"; then exit 1; fi
-`
-	command := exec.Command("bash", "-c", harness, "bash", library, environmentLibrary, setup)
+	harness := filepath.Join(root, "internal", "buildkit", "testdata", "drupal-database-query.sh")
+	command := exec.Command("bash", harness, library, environmentLibrary, setup)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Drupal installed query interpolation test failed: %v\n%s", err, output)
 	}
@@ -1194,21 +1168,8 @@ func TestDrupalInstallerRestoresRuntimeSettingsOnce(t *testing.T) {
 		t.Fatalf("write LibOps settings fixture: %v", err)
 	}
 
-	harness := `
-set -euo pipefail
-export DRUPAL_SETUP_LIBRARY_ONLY=true
-export LIBOPS_DATABASE_LIBRARY="$1"
-export LIBOPS_ENVIRONMENT_LIBRARY="$2"
-export DRUPAL_ROOT="$4"
-export DRUPAL_DEFAULT_SETTINGS_FILE="$5"
-export DRUPAL_DEFAULT_SUBDIR=default
-source "$3"
-ensure_runtime_settings
-ensure_runtime_settings
-test "$(grep -Fc "require '/etc/drupal/libops.settings.php';" "$4/web/sites/default/settings.php")" -eq 1
-grep -Fq "file_private_path" "$4/web/sites/default/settings.php"
-`
-	command := exec.Command("bash", "-c", harness, "bash", library, environmentLibrary, setup, drupalRoot, defaultsPath)
+	harness := filepath.Join(root, "internal", "buildkit", "testdata", "drupal-runtime-settings.sh")
+	command := exec.Command("bash", harness, library, environmentLibrary, setup, drupalRoot, defaultsPath)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Drupal runtime settings recovery test failed: %v\n%s", err, output)
 	}
@@ -1289,6 +1250,7 @@ func TestDrupalInstallersKeepDatabasePasswordsOutOfArguments(t *testing.T) {
 	primary := filepath.Join(root, "images", "drupal", "rootfs", "etc", "s6-overlay", "scripts", "install.sh")
 	helper := filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "bin", "install-drupal-site.sh")
 	islandora := filepath.Join(root, "images", "islandora", "rootfs", "etc", "islandora", "utilities.sh")
+	encoder := filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "share", "libops", "drupal-uri-encode.php")
 
 	for _, file := range []string{primary, helper, islandora} {
 		content, err := os.ReadFile(file)
@@ -1309,12 +1271,71 @@ func TestDrupalInstallersKeepDatabasePasswordsOutOfArguments(t *testing.T) {
 	}
 	got := string(helperContent)
 	for _, want := range []string{
-		`rawurlencode((string) getenv("LIBOPS_DRUPAL_URI_COMPONENT"))`,
+		`/usr/local/share/libops/drupal-uri-encode.php`,
 		`DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL="${drush_database_url}"`,
 		`DB_PASSWORD=${LIBOPS_DRUPAL_INSTALL_DB_PASSWORD:-}`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%s missing %q", helper, want)
+		}
+	}
+
+	encoderContent, err := os.ReadFile(encoder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoderContent), `rawurlencode((string) getenv('LIBOPS_DRUPAL_URI_COMPONENT'))`) {
+		t.Errorf("%s must URI-encode the environment-provided component", encoder)
+	}
+}
+
+func TestRuntimePHPProgramsAreCheckedIn(t *testing.T) {
+	root := repoRoot(t)
+	cases := []struct {
+		launcher   string
+		program    string
+		invocation string
+	}{
+		{
+			launcher:   "images/drupal/rootfs/etc/s6-overlay/scripts/install.sh",
+			program:    "images/drupal/rootfs/usr/local/share/libops/drupal-uri-encode.php",
+			invocation: "/usr/local/share/libops/drupal-uri-encode.php",
+		},
+		{
+			launcher:   "images/drupal/rootfs/usr/local/bin/install-drupal-site.sh",
+			program:    "images/drupal/rootfs/usr/local/share/libops/drupal-uri-encode.php",
+			invocation: "/usr/local/share/libops/drupal-uri-encode.php",
+		},
+		{
+			launcher:   "images/islandora/rootfs/etc/islandora/utilities.sh",
+			program:    "images/islandora/rootfs/etc/islandora/config-sync-directory.php",
+			invocation: "php:script /etc/islandora/config-sync-directory.php",
+		},
+		{
+			launcher:   "images/wp/rootfs/etc/s6-overlay/scripts/wordpress-setup.sh",
+			program:    "images/wp/rootfs/usr/local/share/libops/wordpress-home.php",
+			invocation: "php /usr/local/share/libops/wordpress-home.php",
+		},
+	}
+
+	for _, tt := range cases {
+		launcher, err := os.ReadFile(filepath.Join(root, tt.launcher))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(launcher)
+		if strings.Contains(got, "php -r") || strings.Contains(got, "php:eval") {
+			t.Errorf("%s embeds PHP instead of invoking a checked-in program", tt.launcher)
+		}
+		if !strings.Contains(got, tt.invocation) {
+			t.Errorf("%s does not invoke checked-in program %s", tt.launcher, tt.program)
+		}
+		program, err := os.ReadFile(filepath.Join(root, tt.program))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(string(program), "<?php\n") {
+			t.Errorf("%s is not a PHP program", tt.program)
 		}
 	}
 }
@@ -1327,19 +1348,19 @@ func TestGenericDrupalInstallerEncodesDatabaseURLWithoutArgumentExposure(t *test
 	rawPassword := `p"a\ss'word&+=:/?#%`
 
 	executeSQL := filepath.Join(binDir, "execute-sql-file.sh")
-	if err := os.WriteFile(executeSQL, []byte("#!/bin/sh\nprintf '0\\n'\n"), 0o755); err != nil {
+	executeSQLScript, err := os.ReadFile(filepath.Join(root, "internal", "buildkit", "testdata", "execute-sql-zero.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(executeSQL, executeSQLScript, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	drush := filepath.Join(binDir, "drush")
-	drushScript := `#!/bin/sh
-for argument do
-  case "${argument}" in
-    *"${EXPECTED_RAW_PASSWORD}"*) exit 42 ;;
-  esac
-done
-printf '%s\n' "${DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL}" >"${DRUSH_OUTPUT}"
-`
-	if err := os.WriteFile(drush, []byte(drushScript), 0o755); err != nil {
+	drushScript, err := os.ReadFile(filepath.Join(root, "internal", "buildkit", "testdata", "drush-db-url-stub.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(drush, drushScript, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1352,6 +1373,7 @@ printf '%s\n' "${DRUSH_COMMAND_SITE_INSTALL_OPTIONS_DB_URL}" >"${DRUSH_OUTPUT}"
 	)
 	command.Env = append(os.Environ(),
 		"PATH="+binDir+":"+os.Getenv("PATH"),
+		"LIBOPS_DRUPAL_URI_ENCODER="+filepath.Join(root, "images", "drupal", "rootfs", "usr", "local", "share", "libops", "drupal-uri-encode.php"),
 		"LIBOPS_DRUPAL_INSTALL_DB_PASSWORD="+rawPassword,
 		"EXPECTED_RAW_PASSWORD="+rawPassword,
 		"DRUSH_OUTPUT="+outputFile,
@@ -1425,7 +1447,8 @@ func TestDownloadZipStripRequiresOneTopLevelDirectory(t *testing.T) {
 		"second/file.txt": "second",
 	})
 	invalidDest := t.TempDir()
-	command := exec.Command("bash", "-c", `set -euo pipefail; export DOWNLOAD_LIBRARY_ONLY=true; source "$1"; STRIP=true; REMOVE=(); unpack "$2" "$3"`, "bash", script, invalidZip, invalidDest)
+	harness := filepath.Join(root, "internal", "buildkit", "testdata", "download-zip-strip.sh")
+	command := exec.Command("bash", harness, script, invalidZip, invalidDest)
 	output, err := command.CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "exactly one top-level directory") {
 		t.Fatalf("multi-root ZIP was not rejected safely: err=%v output=%s", err, output)
@@ -1434,7 +1457,7 @@ func TestDownloadZipStripRequiresOneTopLevelDirectory(t *testing.T) {
 	validZip := filepath.Join(t.TempDir(), "valid.zip")
 	writeTestZip(t, validZip, map[string]string{"release/file.txt": "payload"})
 	validDest := t.TempDir()
-	command = exec.Command("bash", "-c", `set -euo pipefail; export DOWNLOAD_LIBRARY_ONLY=true; source "$1"; STRIP=true; REMOVE=(); unpack "$2" "$3"`, "bash", script, validZip, validDest)
+	command = exec.Command("bash", harness, script, validZip, validDest)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("single-root ZIP strip failed: %v\n%s", err, output)
 	}
