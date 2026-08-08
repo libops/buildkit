@@ -1099,6 +1099,22 @@ func TestWordPressAdminPasswordUsesPromptInput(t *testing.T) {
 	}
 }
 
+func TestWordPressSetupRunsWPCLIAsServiceAccount(t *testing.T) {
+	root := repoRoot(t)
+	file := filepath.Join(root, "images", "wp", "rootfs", "etc", "s6-overlay", "scripts", "wordpress-setup.sh")
+	content, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(content)
+	if !strings.Contains(got, "s6-setuidgid nginx wp --path=/var/www/bedrock/web/wp") {
+		t.Fatalf("%s must run setup through the WordPress service account", file)
+	}
+	if strings.Contains(got, "wp --allow-root") {
+		t.Fatalf("%s must not let setup create application files as root", file)
+	}
+}
+
 func TestTomcatManagerDefaultAllowsOnlyLoopback(t *testing.T) {
 	root := repoRoot(t)
 	for _, version := range []string{"tomcat9", "tomcat11"} {
