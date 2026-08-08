@@ -5,6 +5,8 @@ set -euo pipefail
 export OJS_SETUP_LIBRARY_ONLY=true
 export LIBOPS_DATABASE_LIBRARY="$1"
 export LIBOPS_ENVIRONMENT_LIBRARY="$2"
+# The third argument is the checked-in OJS setup helper under test.
+# shellcheck disable=SC1090
 source "$3"
 
 calls="$(mktemp)"

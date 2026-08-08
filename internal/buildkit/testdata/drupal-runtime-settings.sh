@@ -8,6 +8,8 @@ export LIBOPS_ENVIRONMENT_LIBRARY="$2"
 export DRUPAL_ROOT="$4"
 export DRUPAL_DEFAULT_SETTINGS_FILE="$5"
 export DRUPAL_DEFAULT_SUBDIR=default
+# The third argument is the checked-in Drupal setup helper under test.
+# shellcheck disable=SC1090
 source "$3"
 
 ensure_runtime_settings
