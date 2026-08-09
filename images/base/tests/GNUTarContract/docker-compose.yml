@@ -1,0 +1,9 @@
+---
+name: base-gnutarcontract
+services:
+  base:
+    image: ${BASE:-libops/base:local}
+    volumes:
+      - ./test.sh:/test.sh:ro
+    command:
+      - /test.sh

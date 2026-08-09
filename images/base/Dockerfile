@@ -47,6 +47,8 @@ ARG \
   PROCPS_VERSION=4.0.6-r0 \
   # renovate: datasource=repology depName=alpine_3_24/shadow
   SHADOW_VERSION=4.18.0-r1 \
+  # renovate: datasource=repology depName=alpine_3_24/tar
+  TAR_VERSION=1.35-r5 \
   # renovate: datasource=repology depName=alpine_3_24/util-linux
   UTIL_LINUX_VERSION=2.42.1-r0 \
   # renovate: datasource=repology depName=alpine_3_24/wget
@@ -72,6 +74,7 @@ RUN --mount=type=cache,id=base-apk-${TARGETARCH},sharing=locked,target=/var/cach
         patch=="${PATCH_VERSION}" \
         procps=="${PROCPS_VERSION}" \
         shadow=="${SHADOW_VERSION}" \
+        tar=="${TAR_VERSION}" \
         util-linux=="${UTIL_LINUX_VERSION}" \
         wget=="${WGET_VERSION}" \
         yq=="${YQ_VERSION}" \
