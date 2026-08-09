@@ -7,6 +7,10 @@ Built from [libops/isle-buildkit base](https://github.com/libops/buildkit/tree/m
 
 It's based off off [Alpine Linux], and includes [s6 overlay] and [confd].
 
+The runtime also includes GNU tar and xz support. Operator tooling may rely on
+GNU tar's hard-link and delayed-directory-restore behavior for transactional
+volume backup and restore.
+
 ## Dependencies
 
 Requires `alpine` version is set in [docker-bake.hcl](../docker-bake.hcl).
