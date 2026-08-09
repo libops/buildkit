@@ -53,6 +53,8 @@ ARG \
   UTIL_LINUX_VERSION=2.42.1-r0 \
   # renovate: datasource=repology depName=alpine_3_24/wget
   WGET_VERSION=1.25.0-r3 \
+  # renovate: datasource=repology depName=alpine_3_24/xz
+  XZ_VERSION=5.8.3-r0 \
   # renovate: datasource=repology depName=alpine_3_24/yq-go
   YQ_VERSION=4.53.3-r0
 
@@ -77,6 +79,7 @@ RUN --mount=type=cache,id=base-apk-${TARGETARCH},sharing=locked,target=/var/cach
         tar=="${TAR_VERSION}" \
         util-linux=="${UTIL_LINUX_VERSION}" \
         wget=="${WGET_VERSION}" \
+        xz=="${XZ_VERSION}" \
         yq=="${YQ_VERSION}" \
     && \
     addgroup -g 2000 jwt && \
