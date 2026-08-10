@@ -475,7 +475,7 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.plan.outputs.sitectl_create_smoke_matrix) }}
 
-    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@5f44a8c8d157bb7e5cf6d9e1c98847a604e87455 # main
+    uses: libops/.github/.github/workflows/sitectl-create-smoke-test.yaml@ac5db178c5335b456c20f28aa9f447d93c572aa9 # main
     with:
       plugin: ${{ matrix.plugin }}
       create-definition: default
