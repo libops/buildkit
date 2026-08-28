@@ -3,13 +3,13 @@ FROM base
 ARG TARGETARCH
 
 # renovate: datasource=github-tags depName=golang packageName=golang/go versioning=go-mod-directive
-ARG SOFTWARE_VERSION=go1.26.5
+ARG SOFTWARE_VERSION=go1.26.6
 ARG \
   GO_BASE_URL="https://go.dev/dl/${SOFTWARE_VERSION}" \
   GO_AMD64=linux-amd64.tar.gz \
-  GO_AMD64_SHA256="5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053" \
+  GO_AMD64_SHA256="708effb774be8237570d0add163225abbdfaf4fca28b2611df167beba4feef89" \
   GO_ARM64=linux-arm64.tar.gz \
-  GO_ARM64_SHA256="fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49"
+  GO_ARM64_SHA256="d0507e9e9d7fe012aae570108cbd76c15de879e17130ab8cb90d4d7445cb1f2e"
 
 RUN if [ "${TARGETARCH}" = "amd64" ]; \
     then \
