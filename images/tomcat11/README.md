@@ -1,6 +1,6 @@
 # Tomcat 11
 
-Docker image for [Tomcat] version 11.0.23.
+Docker image for [Tomcat] version 11.0.25.
 
 Built from [libops/buildkit tomcat11](https://github.com/libops/buildkit/tree/main/images/tomcat11)
 
