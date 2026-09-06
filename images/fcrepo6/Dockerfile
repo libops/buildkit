@@ -3,10 +3,10 @@ FROM tomcat9
 ARG TARGETARCH
 
 # renovate: datasource=github-releases depName=fcrepo6 packageName=fcrepo/fcrepo
-ARG SOFTWARE_VERSION=6.5.1
+ARG SOFTWARE_VERSION=6.5.2
 ARG FCREPO_FILE=fcrepo-webapp-${SOFTWARE_VERSION}.war
 ARG FCREPO_URL=https://github.com/fcrepo/fcrepo/releases/download/fcrepo-${SOFTWARE_VERSION}/${FCREPO_FILE}
-ARG FCREPO_SHA256="5091550fe31e7693f36396e0ea3231c990648f14d914597124b84971a9daaae5"
+ARG FCREPO_SHA256="ae71140636079ab7d0d009ccba6428a9a67f7299d3233cc03e161f30a0f17b1b"
 
 # renovate: datasource=github-releases depName=islandora-syn-fcrepo6 packageName=Islandora/Syn
 ARG SYN_VERSION=1.1.1

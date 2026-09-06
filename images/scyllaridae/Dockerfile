@@ -3,7 +3,7 @@ FROM go1-26 AS builder
 WORKDIR /build
 
 # renovate: datasource=github-releases depName=scyllaridae packageName=islandora/scyllaridae
-ARG SOFTWARE_VERSION=5.2.10
+ARG SOFTWARE_VERSION=5.3.2
 ARG SCYLLARIDAE_URL="https://github.com/islandora/scyllaridae/archive/refs/tags/${SOFTWARE_VERSION}.tar.gz"
 ARG SCYLLARIDAE_SHA256="c68075673b604a7ffeeaffad5a50afa146e61e7047559a3d4d1c020975d0e484"
 RUN download.sh \
