@@ -11,7 +11,7 @@ WORKDIR /opt/tomcat
 
 RUN --mount=type=cache,id=tomcat-downloads-${TARGETARCH},sharing=locked,target=/opt/downloads \
     TOMCAT_FILE="apache-tomcat-${SOFTWARE_VERSION}.tar.gz" && \
-    TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-11/v${SOFTWARE_VERSION}/bin/${TOMCAT_FILE}" && \
+    TOMCAT_URL="https://downloads.apache.org/tomcat/tomcat-11/v${SOFTWARE_VERSION}/bin/${TOMCAT_FILE}" && \
     download.sh --url "${TOMCAT_URL}" --sha256 "${TOMCAT_FILE_SHA256}" "${DOWNLOAD_CACHE_DIRECTORY}" && \
     download.sh \
         --url "${TOMCAT_URL}" \

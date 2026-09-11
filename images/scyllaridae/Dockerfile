@@ -5,7 +5,7 @@ WORKDIR /build
 # renovate: datasource=github-releases depName=scyllaridae packageName=islandora/scyllaridae
 ARG SOFTWARE_VERSION=5.3.2
 ARG SCYLLARIDAE_URL="https://github.com/islandora/scyllaridae/archive/refs/tags/${SOFTWARE_VERSION}.tar.gz"
-ARG SCYLLARIDAE_SHA256="c68075673b604a7ffeeaffad5a50afa146e61e7047559a3d4d1c020975d0e484"
+ARG SCYLLARIDAE_SHA256="803f4dd8db6d0ba2ae94fb6f78792d036d9df0342ab6b8cfd80dc3e06dced8c9"
 RUN download.sh \
       --url "${SCYLLARIDAE_URL}" \
       --sha256 "${SCYLLARIDAE_SHA256}" \

@@ -289,7 +289,7 @@ elif [ "$DEP" = "golang" ]; then
   exit 0
 
 elif [ "$DEP" = "scyllaridae" ] ; then
-  URL="https://github.com/libops/scyllaridae/archive/refs/tags/${NEW_VERSION}.tar.gz"
+  URL="https://github.com/islandora/scyllaridae/archive/refs/tags/${NEW_VERSION}.tar.gz"
   ARG=SCYLLARIDAE_SHA256
   DOCKERFILES=("images/scyllaridae/Dockerfile")
 

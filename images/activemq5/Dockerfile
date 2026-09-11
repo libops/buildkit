@@ -4,7 +4,7 @@ ARG TARGETARCH
 # renovate: datasource=custom.apache-downloads depName=apache-activemq5 packageName=activemq
 ARG SOFTWARE_VERSION=5.19.11
 ARG ACTIVEMQ_FILE="apache-activemq-${SOFTWARE_VERSION}-bin.tar.gz"
-ARG ACTIVEMQ_URL="https://archive.apache.org/dist/activemq/${SOFTWARE_VERSION}/${ACTIVEMQ_FILE}"
+ARG ACTIVEMQ_URL="https://downloads.apache.org/activemq/${SOFTWARE_VERSION}/${ACTIVEMQ_FILE}"
 ARG ACTIVEMQ_FILE_SHA256="c279c5a589962e8fc2463b2b6869de0a08ee9a341487de5072b66b370d85371c"
 
 EXPOSE 61616 5672 61613 1883 61614 8161

@@ -4,7 +4,7 @@ ARG TARGETARCH
 # renovate: datasource=custom.apache-downloads depName=apache-solr10 packageName=solr/solr
 ARG SOFTWARE_VERSION=10.0.0
 ARG SOLR_FILE=solr-${SOFTWARE_VERSION}.tgz
-ARG SOLR_URL=https://archive.apache.org/dist/solr/solr/${SOFTWARE_VERSION}/solr-${SOFTWARE_VERSION}.tgz
+ARG SOLR_URL=https://downloads.apache.org/solr/solr/${SOFTWARE_VERSION}/solr-${SOFTWARE_VERSION}.tgz
 ARG SOLR_FILE_SHA256="07c180970f60d13776be13ccb60c707d041e5e1a8b914d197d1358ac25f804b5"
 # renovate: datasource=github-releases depName=solr-ocrhighlighting packageName=dbmdz/solr-ocrhighlighting
 ARG OCRHIGHLIGHT_VERSION=0.10.1
