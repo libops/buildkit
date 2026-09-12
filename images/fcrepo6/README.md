@@ -1,6 +1,6 @@
 # Fcrepo 6
 
-Docker image for [fcrepo] version 6.5.1.
+Docker image for [fcrepo] version 6.5.2.
 
 Built from [libops/isle-buildkit fcrepo6](https://github.com/libops/buildkit/tree/main/images/fcrepo6)
 

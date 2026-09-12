@@ -26,21 +26,21 @@ ARG \
   # renovate: datasource=repology depName=alpine_3_24/ca-certificates
   CA_CERTIFICATES_VERSION=20260611-r0 \
   # renovate: datasource=repology depName=alpine_3_24/curl
-  CURL_VERSION=8.21.0-r0 \
+  CURL_VERSION=8.22.0-r0 \
   # renovate: datasource=repology depName=alpine_3_24/git
   GIT_VERSION=2.54.0-r0 \
   # renovate: datasource=repology depName=alpine_3_24/gnupg
   GNUPG_VERSION=2.4.9-r1 \
   # renovate: datasource=repology depName=alpine_3_24/gzip
-  GZIP_VERSION=1.14-r2 \
+  GZIP_VERSION=1.14-r3 \
   # renovate: datasource=repology depName=alpine_3_24/jq
-  JQ_VERSION=1.8.1-r0 \
+  JQ_VERSION=1.8.2-r0 \
   # renovate: datasource=repology depName=alpine_3_24/mariadb-client
   MARIADB_CLIENT_VERSION=11.8.8-r0 \
   # renovate: datasource=repology depName=alpine_3_24/netcat-openbsd
   NETCAT_OPENBSD_VERSION=1.234.1-r0 \
   # renovate: datasource=repology depName=alpine_3_24/openssl
-  OPENSSL_VERSION=3.5.7-r0 \
+  OPENSSL_VERSION=3.5.8-r0 \
   # renovate: datasource=repology depName=alpine_3_24/patch
   PATCH_VERSION=2.8-r0 \
   # renovate: datasource=repology depName=alpine_3_24/procps-ng
@@ -50,13 +50,13 @@ ARG \
   # renovate: datasource=repology depName=alpine_3_24/tar
   TAR_VERSION=1.35-r5 \
   # renovate: datasource=repology depName=alpine_3_24/util-linux
-  UTIL_LINUX_VERSION=2.42.1-r0 \
+  UTIL_LINUX_VERSION=2.42.3-r1 \
   # renovate: datasource=repology depName=alpine_3_24/wget
   WGET_VERSION=1.25.0-r3 \
   # renovate: datasource=repology depName=alpine_3_24/xz
-  XZ_VERSION=5.8.3-r0 \
+  XZ_VERSION=5.8.4-r0 \
   # renovate: datasource=repology depName=alpine_3_24/yq-go
-  YQ_VERSION=4.53.3-r0
+  YQ_VERSION=4.53.3-r1
 
 # Install packages and tools required by all downstream images.
 # Platform specific does require arch specific identifier.

@@ -23,11 +23,11 @@ ARG \
     # renovate: datasource=repology depName=alpine_3_24/unzip
     UNZIP_VERSION=6.0-r16 \
     # renovate: datasource=github-releases depName=archivesspace packageName=archivesspace/archivesspace
-    SOFTWARE_VERSION=4.2.0
+    SOFTWARE_VERSION=4.2.1
 
 ARG ARCHIVESSPACE_FILE=archivesspace-v${SOFTWARE_VERSION}.zip
 ARG ARCHIVESSPACE_URL=https://github.com/archivesspace/archivesspace/releases/download/v${SOFTWARE_VERSION}/${ARCHIVESSPACE_FILE}
-ARG ARCHIVESSPACE_SHA256="46dfd77cbb0643d43ddf2555bd9edbb6b63fd8cbfc140bcf81c1238eb8f9eb7f"
+ARG ARCHIVESSPACE_SHA256="bd147f0d9e62902137e121c1b7ee639c6e6bb60c333d3cd20dc933d053e0d2e5"
 # renovate: datasource=maven depName=mysql-connector-j packageName=com.mysql:mysql-connector-j
 ARG MYSQL_CONNECTOR_VERSION=9.7.0
 ARG MYSQL_CONNECTOR_FILE=mysql-connector-j-${MYSQL_CONNECTOR_VERSION}.jar
